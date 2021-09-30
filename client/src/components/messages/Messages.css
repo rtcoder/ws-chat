@@ -1,0 +1,53 @@
+.messages {
+  padding: 10px;
+}
+
+.messages .user-messages-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  margin-top: 10px;
+}
+
+.messages .user-messages-group.left {
+  align-items: flex-start;
+}
+
+.messages .user-messages-group.right {
+  align-items: flex-end;
+}
+
+.messages .message {
+  padding-top: 2px;
+}
+
+.messages .message .text {
+  display: flex;
+  align-items: center;
+  border-radius: 5px;
+  padding: 5px;
+  background: #cdcdcd;
+}
+
+.messages .user-messages-group.left .message .text {
+  border-top-right-radius: 15px;
+  border-bottom-right-radius: 15px;
+}
+.messages .user-messages-group.left .message:first-child .text {
+  border-top-left-radius: 15px;
+}
+.messages .user-messages-group.left .message:last-child .text {
+  border-bottom-left-radius: 15px;
+}
+.messages .user-messages-group.right .message .text {
+  background:#09c;
+  color:#fff;
+  border-top-left-radius: 15px;
+  border-bottom-left-radius: 15px;
+}
+.messages .user-messages-group.right .message:first-child .text {
+  border-top-right-radius: 15px;
+}
+.messages .user-messages-group.right .message:last-child .text {
+  border-bottom-right-radius: 15px;
+}

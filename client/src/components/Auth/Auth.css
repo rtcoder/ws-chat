@@ -1,0 +1,96 @@
+.auth-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-logo {
+  font-size: 20px;
+  text-align: center;
+  height: 50px;
+  line-height: 50px;
+}
+
+.forms {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  margin-top: 50px;
+}
+
+.forms p {
+  text-align: center;
+  font-size: 19px;
+}
+
+.forms .message {
+  padding: 3px 15px 5px;
+  font-size: 13px;
+  color: #ff0000;
+}
+
+.login, .register {
+  width: 500px;
+  display: flex;
+  flex-direction: column;
+  padding: 0 30px;
+  overflow: hidden;
+}
+
+.forms.view-login .login,
+.forms.view-register .register {
+  display: flex;
+}
+
+.forms.view-register .login,
+.forms.view-login .register {
+  display: none;
+}
+
+.forms input {
+  margin: 5px 0;
+  padding: 10px;
+  border: 2px solid #d2d2d2;
+  outline: none;
+  font-size: 15px;
+}
+
+.forms input:focus {
+  border: 2px solid #09d;
+}
+
+.forms button,
+.forms input {
+  height: 40px;
+  border-radius: 20px;
+}
+
+.forms button {
+  width: 150px;
+  border: 2px solid #09d;
+  background: #09d;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.forms .link {
+  color: #09d;
+  cursor: pointer;
+  font-size: unset;
+}
+
+.forms .buttons {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+@media (max-width: 500px) {
+  .forms {
+    flex-direction: column;
+  }
+
+  .login, .register {
+    width: 100%;
+  }
+}

@@ -1,72 +1,25 @@
+require('dotenv').config();
 const express = require('express');
-const {MongoClient, ObjectId} = require('mongodb');
 const app = express();
 const cors = require('cors');
+const {authRouter} = require("./api/router/authRouter");
+const {apiRouter} = require("./api/router/apiRouter");
+const {mongoConnect} = require("./db/db");
+const {ValidationError} = require("express-validation");
 
-const mongoUrl = "mongodb://localhost:27017/";
-const DB_NAME = 'local';
 app.use(cors());
-app.use(express.urlencoded({extended: false}));
+// app.use(express.urlencoded());
 app.use(express.json());
-
-const messagesCollection = (fn) => {
-    MongoClient.connect(mongoUrl, (err, db) => {
-        if (err) throw err;
-        const dbo = db.db(DB_NAME);
-        const collection = dbo.collection("messages");
-        fn(db, collection);
-    });
-}
-
-app.get('/messages/:id', (request, respond) => {
-    const {id} = request.params
-    messagesCollection((db, collection) => {
-        collection.findOne({_id: new ObjectId(id)}, (err, result) => {
-            if (err) throw err;
-            db.close();
-            respond.send(result)
-        });
-    });
-});
-app.get('/messages', (request, respond) => {
-    const queryParams = {};
-    Object.keys(request.query).forEach(key => {
-        const value = request.query[key];
-        if (!isNaN(Number(value))) {
-            queryParams[key] = +value;
-        } else if (['true', 'false'].includes(value)) {
-            queryParams[key] = value === 'true';
-        } else {
-            queryParams[key] = value;
-        }
-    })
-    messagesCollection((db, collection) => {
-        collection.find({...queryParams})
-            .sort({_id: -1})
-            .toArray((err, result) => {
-                if (err) throw err;
-                db.close();
-                respond.send(result)
-            });
-    });
-});
-app.post('/messages', (request, respond) => {
-    const {name, deleted, completed} = request.body;
-    messagesCollection((db, collection) => {
-        collection.insertOne({name, deleted, completed}, (err, result) => {
-            if (err) throw err;
-            db.close();
-            respond.send(result)
-        });
-    });
-});
-// app.get('*', (request, respond) => {
-//     respond.status(404).send(null)
-// });
-app.get('*', (request, respond) => {
-    respond.send('d')
+app.use('/auth', authRouter);
+app.use('/api', apiRouter)
+app.use(function (err, req, res, next) {
+  if (err instanceof ValidationError) {
+    return res.status(err.statusCode).json(err);
+  }
+  return res.status(500).json(err);
 });
 
-app.listen(8000, () => {
-    console.log('Server started and is listening on port 8000')
-});
+mongoConnect()
+  .then(() => console.log('Connected to MongoDB'))
+  .then(() => app.listen(8000, () => console.log("Server started and is listening on port 8000")))
+  .catch(err => console.log(err));
