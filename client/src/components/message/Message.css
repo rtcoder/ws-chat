@@ -42,15 +42,24 @@
 
 .message .options {
   width: 90px;
-  display: none;
+  display: flex;
+  opacity: 0;
+  visibility: hidden;
 }
 
 .message:hover .options {
-  display: flex;
   align-items: center;
+  opacity: 1;
+  visibility: visible;
 }
-.message .options .icon{
+
+.message .options .icon {
+  color: #cdcdcd;
   cursor: pointer;
+}
+
+.message .options .icon:hover {
+  color: #565656;
 }
 
 .left .message .options {

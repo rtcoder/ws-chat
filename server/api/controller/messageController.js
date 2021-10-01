@@ -6,7 +6,7 @@ const getMessage = async (req, res, next) => {
   try {
     res.json(
       (await Message.find()
-        .populate('author', 'first_name last_name')
+        .populate('author', 'first_name last_name avatar')
         .sort({$natural: -1}).limit(30)
         .exec()).reverse()
     );

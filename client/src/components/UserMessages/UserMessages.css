@@ -1,16 +1,16 @@
 .user-messages-group {
   display: flex;
-  flex-direction: column;
   justify-content: flex-start;
+  align-items: flex-end;
   margin-top: 10px;
 }
 
 .user-messages-group.left {
-  align-items: flex-start;
+  flex-direction: row-reverse;
 }
 
 .user-messages-group.right {
-  align-items: flex-end;
+  flex-direction: row;
 }
 
 .user-messages-group .group {
@@ -21,7 +21,35 @@
   overflow: hidden;
 }
 
+.user-messages-group > .user-icon {
+  margin: 0 5px;
+  width: 24px;
+  height: 24px;
+  border-radius: 20px;
+  overflow: hidden;
+}
 
-.user-messages-group.right .user {
+.user-messages-group > .user-icon img{
+  width: 24px;
+  height: 24px;
+  object-fit: cover;
+}
+
+.user-messages-group  .user-name {
+  font-size: 11px;
+  color: #565656;
+  margin: 0 5px;
+}
+
+.user-messages-group .user-group-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  width: 100%;
+  overflow: hidden;
+}
+
+.user-messages-group.right .user-name,
+.user-messages-group.right .user-icon {
   display: none;
 }

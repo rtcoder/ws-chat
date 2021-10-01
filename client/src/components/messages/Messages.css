@@ -22,6 +22,7 @@
 .messages .user-messages-group.left .message .text {
   border-top-right-radius: 15px;
   border-bottom-right-radius: 15px;
+  text-align: left;
 }
 .messages .user-messages-group.left .message:first-child .text {
   border-top-left-radius: 15px;

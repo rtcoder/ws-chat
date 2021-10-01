@@ -16,7 +16,7 @@ const createMessage = async (
 };
 const getMessageWithAuthor = async (id) => {
   return await Message.findOne({_id: id})
-    .populate('author', 'first_name last_name')
+    .populate('author', 'first_name last_name avatar')
     .exec();
 };
 
