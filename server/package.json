@@ -18,6 +18,8 @@
     "jsonwebtoken": "^8.5.1",
     "knex": "^0.95.11",
     "mongodb": "^4.1.1",
-    "mongoose": "^6.0.8"
+    "mongoose": "^6.0.8",
+    "websocket": "^1.0.34",
+    "ws": "^8.2.2"
   }
 }

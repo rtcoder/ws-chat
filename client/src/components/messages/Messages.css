@@ -1,24 +1,7 @@
 .messages {
   padding: 10px;
-}
-
-.messages .user-messages-group {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  margin-top: 10px;
-}
-
-.messages .user-messages-group.left {
-  align-items: flex-start;
-}
-
-.messages .user-messages-group.right {
-  align-items: flex-end;
-}
-
-.messages .message {
-  padding-top: 2px;
+  height: calc(100vh - 60px);
+  overflow: auto;
 }
 
 .messages .message .text {
@@ -27,6 +10,13 @@
   border-radius: 5px;
   padding: 5px;
   background: #cdcdcd;
+  white-space: pre-line;
+  text-align: right;
+  max-width: 100%;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  overflow: hidden;
 }
 
 .messages .user-messages-group.left .message .text {

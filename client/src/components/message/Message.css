@@ -1,0 +1,72 @@
+.message {
+  position: relative;
+  padding-top: 2px;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+}
+
+.left .message {
+  animation: slidein 0.8s;
+  animation-iteration-count: 1;
+}
+
+.right .message {
+  animation: slideinReverse 0.8s;
+  animation-iteration-count: 1;
+}
+
+@keyframes slidein {
+  0% {
+    /*transform: translateX(-50%);*/
+    opacity: 0;
+  }
+
+  100% {
+    /*transform: translateX(0%);*/
+    opacity: 1;
+  }
+}
+
+@keyframes slideinReverse {
+  0% {
+    /*transform: translateX(50%);*/
+    opacity: 0;
+  }
+
+  100% {
+    /*transform: translateX(0%);*/
+    opacity: 1;
+  }
+}
+
+.message .options {
+  width: 90px;
+  display: none;
+}
+
+.message:hover .options {
+  display: flex;
+  align-items: center;
+}
+.message .options .icon{
+  cursor: pointer;
+}
+
+.left .message .options {
+  justify-content: flex-start;
+  margin-left: 10px;
+}
+
+.right .message .options {
+  justify-content: flex-end;
+  margin-right: 10px;
+}
+
+.message .content-message {
+  max-width: calc(100% - 90px);
+}
+
+.right .message {
+  flex-direction: row-reverse;
+}

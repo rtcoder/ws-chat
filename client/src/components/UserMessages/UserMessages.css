@@ -1,0 +1,27 @@
+.user-messages-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  margin-top: 10px;
+}
+
+.user-messages-group.left {
+  align-items: flex-start;
+}
+
+.user-messages-group.right {
+  align-items: flex-end;
+}
+
+.user-messages-group .group {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  width: 100%;
+  overflow: hidden;
+}
+
+
+.user-messages-group.right .user {
+  display: none;
+}

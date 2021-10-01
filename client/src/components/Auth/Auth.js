@@ -75,7 +75,7 @@ class Auth extends React.Component {
     login(this.state.loginFormData)
       .then(({data, error}) => {
         if (error) {
-          console.log(error)
+          console.error(error)
           this.setState({loginMessage: this.getResponseMessage(error)});
           return;
         }
@@ -149,7 +149,7 @@ class Auth extends React.Component {
                    onChange={this.handleRegisterFormPasswordChange}/>
             <div className="message">{this.state.registerMessage}</div>
             <div className="buttons">
-              <button type="button">Sign up</button>
+              <button type="button" onClick={() => this.register()}>Sign up</button>
               <p className="link" onClick={() => this.setViewType('login')}>or Sign in</p>
             </div>
           </div>

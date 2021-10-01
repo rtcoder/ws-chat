@@ -1,15 +1,17 @@
 const {Message} = require("../../db/db");
-const {ObjectId} = require("mongodb");
+const {createMessage, getMessageWithAuthor} = require("../../db/models/messageMethods");
+const {sendMessageWS} = require("../../ws/wsMethods");
 
 const getMessage = async (req, res, next) => {
   try {
     res.json(
-      await Message.find()
+      (await Message.find()
         .populate('author', 'first_name last_name')
-        .exec()
+        .sort({$natural: -1}).limit(30)
+        .exec()).reverse()
     );
   } catch (err) {
-    console.log(err);
+    console.error(err);
   }
 };
 
@@ -17,15 +19,14 @@ const postMessage = async (req, res, next) => {
   try {
     const {text, images} = req.body;
 
-    await new Message({
-      text,
-      images,
-      author: new ObjectId(req.user.user_id)
-    }).save();
-
+    createMessage({text, images, user_id: req.user.user_id}, (message) => {
+      getMessageWithAuthor(message._id).then((result) => {
+        sendMessageWS(result);
+      });
+    });
     res.status(201).send();
   } catch (err) {
-    console.log(err);
+    console.error(err);
   }
 };
 

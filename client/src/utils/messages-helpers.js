@@ -31,6 +31,5 @@ export const mapMessagesToGroups = messages => {
       addToLastGroup(message);
     }
   });
-  console.log({groups});
   return groups;
 };
