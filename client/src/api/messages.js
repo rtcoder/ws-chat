@@ -14,7 +14,7 @@ export const getMessages = () => {
 export const postMessage = (data) => {
   return fetchApi(apiUrl, {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify({data}),
     headers: {
       'x-access-token': getAuthToken()
     }

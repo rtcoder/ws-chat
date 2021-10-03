@@ -1,0 +1,97 @@
+.bottom-bar {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  margin-bottom: 5px;
+  align-items: flex-end;
+}
+
+.bottom-bar button {
+  height: 40px;
+  border: none;
+  background: transparent;
+}
+
+.bottom-bar .icon {
+  cursor: pointer;
+  color: #5a5a5a;
+}
+
+.bottom-bar .icon:hover {
+  color: #09d;
+}
+
+.input-field-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #ebebeb;
+  border-radius: 20px;
+  justify-content: space-between;
+  align-items: stretch;
+}
+.input-field-container .text-field-container {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+}
+textarea {
+  resize: none;
+  font-size: 18px;
+  outline: none;
+  border: none;
+  background: transparent;
+  padding: 9px 7px;
+  height: 100%;
+  width: 100%;
+}
+
+label {
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+label input {
+  display: none;
+}
+
+.files-preview {
+  display: flex;
+  flex-direction: row;
+  padding: 10px;
+}
+
+.files-preview > div {
+  width: 48px;
+  height: 48px;
+  position: relative;
+  margin: 3px 12px 3px 0;
+}
+
+.files-preview .icon.delete-image {
+  width: 22px;
+  height: 22px;
+  border-radius: 25px;
+  border: 1px solid #000;
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform: translate(50%, -50%);
+  background:#fff;
+  font-size: 18px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.files-preview .icon.delete-image:hover {
+  background:#ebebeb;
+}
+
+.files-preview img {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  border: 1px solid #000;
+}

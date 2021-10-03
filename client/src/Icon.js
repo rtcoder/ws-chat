@@ -1,11 +1,9 @@
-import './App.css';
-import React from "react";
-
-const Icon = ({className, children}) => {
-    className = ("icon material-icons " + (className || '')).trim();
-    return (
-        <i className={className}>{children}</i>
-    );
-}
+const Icon = ({className, children, onClick}) => {
+  className = ("icon material-icons " + (className || '')).trim();
+  return (
+    <i className={className}
+       onClick={onClick}>{children}</i>
+  );
+};
 
 export default Icon;

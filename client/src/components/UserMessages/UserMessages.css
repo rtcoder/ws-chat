@@ -18,7 +18,6 @@
   flex-direction: column;
   justify-content: flex-start;
   width: 100%;
-  overflow: hidden;
 }
 
 .user-messages-group > .user-icon {
@@ -46,7 +45,6 @@
   flex-direction: column;
   justify-content: flex-start;
   width: 100%;
-  overflow: hidden;
 }
 
 .user-messages-group.right .user-name,

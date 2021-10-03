@@ -1,0 +1,24 @@
+.reactions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 20px;
+  padding: 0 5px;
+  box-shadow: 0 0 5px 1px #7e7e7e;
+  background: #fff;
+  margin-right: 5px;
+}
+
+.reactions .icon {
+  margin: 2px 3px;
+  cursor: pointer;
+}
+
+.favorite {
+  color: #f00;
+}
+
+.thumb_up,
+.thumb_down {
+  color: #c6893b;
+}

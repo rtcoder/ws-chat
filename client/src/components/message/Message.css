@@ -40,11 +40,62 @@
   }
 }
 
+.message .text {
+  display: flex;
+  align-items: center;
+  border-radius: 5px;
+  padding: 5px 10px;
+  background: #cdcdcd;
+  white-space: pre-line;
+  text-align: right;
+  max-width: 100%;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  overflow: hidden;
+}
+
+.user-messages-group.left .message .text {
+  border-top-right-radius: 15px;
+  border-bottom-right-radius: 15px;
+  text-align: left;
+}
+
+.user-messages-group.left .message:first-child .text {
+  border-top-left-radius: 15px;
+}
+
+.user-messages-group.left .message:last-child .text {
+  border-bottom-left-radius: 15px;
+}
+
+.user-messages-group.right .message .text {
+  background: #09c;
+  color: #fff;
+  border-top-left-radius: 15px;
+  border-bottom-left-radius: 15px;
+}
+
+.user-messages-group.right .message .text.only-emoji,
+.text.only-emoji {
+  background: transparent;
+  font-size: 50px;
+}
+
+.user-messages-group.right .message:first-child .text {
+  border-top-right-radius: 15px;
+}
+
+.user-messages-group.right .message:last-child .text {
+  border-bottom-right-radius: 15px;
+}
+
 .message .options {
   width: 90px;
   display: flex;
   opacity: 0;
   visibility: hidden;
+  position: relative;
 }
 
 .message:hover .options {
@@ -53,12 +104,12 @@
   visibility: visible;
 }
 
-.message .options .icon {
+.message .options > .icon {
   color: #cdcdcd;
   cursor: pointer;
 }
 
-.message .options .icon:hover {
+.message .options > .icon:hover {
   color: #565656;
 }
 
@@ -78,4 +129,19 @@
 
 .right .message {
   flex-direction: row-reverse;
+}
+
+.images {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #000;
+}
+
+.images img {
+  width: 150px;
+  height: 150px;
+  object-fit: cover;
 }

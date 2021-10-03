@@ -4,6 +4,20 @@ const config = process.env;
 
 const clients = {};
 
+const WS_ACTIONS = {
+  MESSAGE_ADD: 'message_add',
+  MESSAGE_DELETE: 'message_delete',
+  REACTION_ADD: 'reaction_add',
+};
+const decodeMessage = message => {
+  return JSON.parse(
+    decodeURIComponent(
+      escape(
+        Buffer.from(message, 'base64').toString()
+      )
+    )
+  );
+};
 const encodeMessage = message => {
   return Buffer.from(
     unescape(
@@ -24,13 +38,24 @@ const sendMessageWS = json => {
 
 const onMessage = user_id => async message => {
   if (message.type === 'utf8') {
-    const dataFromClient = JSON.parse(message.utf8Data);
+    const dataFromClient = decodeMessage(message.utf8Data);
 
-    createMessage({...dataFromClient, user_id}).then(message => {
-      getMessageWithAuthor(message._id).then((result) => {
-        sendMessageWS(result);
-      });
-    });
+    switch (dataFromClient.type) {
+      case WS_ACTIONS.MESSAGE_ADD:
+
+        createMessage({...dataFromClient.data, user_id}, message => {
+          getMessageWithAuthor(message._id).then((result) => {
+            sendMessageWS(result);
+          });
+        });
+        break;
+      case WS_ACTIONS.MESSAGE_DELETE:
+
+        break;
+      case WS_ACTIONS.REACTION_ADD:
+
+        break;
+    }
   }
 };
 
@@ -42,9 +67,14 @@ const onClose = user_id => connection => {
 const onRequest = request => {
   try {
     const query = {...request.resourceURL.query};
-    const token = query.token;
+    const token = query.t;
+    if (!token) {
+      request.close();
+      return;
+    }
     const decodedUser = jwt.verify(token, config.TOKEN_KEY);
     const userID = decodedUser.user_id;
+    console.log({userID});
 
     console.info((new Date()) + ' Recieved a new connection from origin ' + request.origin + '.');
     const connection = request.accept(null, request.origin);
@@ -63,5 +93,6 @@ const onRequest = request => {
 module.exports = {
   onRequest,
   wsClients: clients,
-  sendMessageWS
+  sendMessageWS,
+  decodeMessage
 };

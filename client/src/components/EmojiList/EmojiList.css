@@ -1,0 +1,43 @@
+.emoji {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 15px;
+  position: relative;
+}
+
+.emoji .emojis-container {
+  background: #fff;
+  width: 250px;
+  height: 250px;
+  position: absolute;
+  top: -250px;
+  overflow: auto;
+  padding: 5px;
+  margin-right: 50px;
+  box-shadow: 0 0 2px 1px #aaa;
+  border-radius: 10px;
+}
+
+.emoji .emojis-container .list-emoji {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.emoji .emojis-container .list-emoji .emoji-item {
+  font-size: 35px;
+  cursor: pointer;
+  width: 45px;
+  height: 45px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px;
+  user-select: none;
+}
+
+.emoji .emojis-container .list-emoji .emoji-item:hover {
+  background: #d9d9d9;
+}
