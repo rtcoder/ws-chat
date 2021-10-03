@@ -29,6 +29,7 @@ const ChatMessageInput = ({onSendMessage}) => {
   };
 
   const keyDown = async e => {
+    replaceEmojis();
     if (e.key === 'Enter') {
       e.preventDefault();
 
@@ -42,6 +43,26 @@ const ChatMessageInput = ({onSendMessage}) => {
       updateTextareaHeight(e.target.scrollHeight);
     }
   };
+  const replaceEmojis = () => {
+    textareaRef.current.value = textareaRef.current.value
+      .replaceAll(';*', '😘')
+      .replaceAll(':*', '😗')
+      .replaceAll(':P', '😛')
+      .replaceAll(':/', '😕')
+      .replaceAll(';(', '😢')
+      .replaceAll('-_-', '😑')
+      .replaceAll(':O', '😮')
+      .replaceAll(':D', '😀')
+      .replaceAll(':)', '🙂')
+      .replaceAll(':(', '😞')
+      .replaceAll('(:', '🙃')
+      .replaceAll(';)', '😉')
+      .replaceAll('(y)', '👍')
+      .replaceAll('(n)', '👎')
+      .replaceAll('<3', '❤️')
+      .replaceAll('</3', '💔');
+
+  }
 
   const sendMessage = () => {
     const value = textareaRef.current.value.trim();
@@ -89,7 +110,7 @@ const ChatMessageInput = ({onSendMessage}) => {
     <div>
       <div className="bottom-bar">
         <label>
-          <input type="file" onChange={changeInputFile} multiple="multiple" ref={inputFileRef}/>
+          <input type="file" onChange={changeInputFile} multiple="multiple" ref={inputFileRef} accept="image/*"/>
           <Icon>add_photo_alternate</Icon>
         </label>
         <div className="input-field-container">

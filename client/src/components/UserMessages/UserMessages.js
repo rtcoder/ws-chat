@@ -5,15 +5,16 @@ import Image from "../../Image";
 
 const UserMessages = ({group, authId}) => {
   const {author, messages} = group;
+  const messageBelongsToLoggedUser = author._id === authId;
   return (
-    <div className={`user-messages-group ${author._id === authId ? 'right' : 'left'}`}>
+    <div className={`user-messages-group ${messageBelongsToLoggedUser ? 'right' : 'left'}`}>
       <div className="user-group-content">
         <div className="user-name">{author.first_name}</div>
         <div className="group">
           {
             messages.length
               ? messages.map((msg, key) =>
-                <Message key={key} message={msg}/>
+                <Message key={key} message={msg} canDelete={messageBelongsToLoggedUser}/>
               )
               : ''
           }

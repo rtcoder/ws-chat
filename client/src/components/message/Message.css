@@ -137,11 +137,33 @@
   flex-direction: row;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid #000;
+  max-width: 450px;
 }
 
-.images img {
+.images > .image-handler {
+  padding: 2px;
+  width: calc(100% / 3);
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.images > .image-handler:hover {
+  filter: brightness(90%);
+}
+
+.images.i1 > .image-handler {
   width: 150px;
-  height: 150px;
+}
+
+.images.i2 > .image-handler,
+.images.i4 > .image-handler {
+  width: 50%;
+}
+
+.images > .image-handler img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+  border-radius: 20px;
 }
