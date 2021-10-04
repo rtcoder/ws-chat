@@ -102,7 +102,6 @@ const ChatMessageInput = ({onSendMessage}) => {
   const insertEmoji = emojis => {
     const el = textareaRef.current;
     const [start, end] = [el.selectionStart, el.selectionEnd];
-    console.log(start,end)
     el.setRangeText(emojis, start, end, 'end');
   };
 

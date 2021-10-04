@@ -1,4 +1,4 @@
-const {Message, ImageModel} = require("../../db/db");
+const {ImageModel} = require("../../db/db");
 const {ObjectId} = require("mongodb");
 
 const createImages = async (

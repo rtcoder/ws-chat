@@ -24,8 +24,8 @@ const Message = ({message, canDelete}) => {
           message.images.length
             ? <div className={imagesDivClassName}>
               {message.images.map((file, index) =>
-                <div className="image-handler">
-                  <Image key={index} src={file}/>
+                <div key={index} className="image-handler">
+                  <Image src={file}/>
                 </div>
               )}
             </div>

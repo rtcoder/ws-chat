@@ -8,13 +8,13 @@
 
 .emoji .emojis-container {
   background: #fff;
-  width: 250px;
-  height: 250px;
+  width: 550px;
+  height: 450px;
   position: absolute;
-  top: -250px;
+  top: -450px;
   overflow: auto;
   padding: 5px;
-  margin-right: 50px;
+  margin-right: 550px;
   box-shadow: 0 0 2px 1px #aaa;
   border-radius: 10px;
 }
@@ -23,14 +23,15 @@
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
+  padding: 5px 0;
 }
 
 .emoji .emojis-container .list-emoji .emoji-item {
-  font-size: 35px;
+  font-size: 25px;
   cursor: pointer;
-  width: 45px;
-  height: 45px;
+  width: 35px;
+  height: 35px;
   display: flex;
   justify-content: center;
   align-items: center;

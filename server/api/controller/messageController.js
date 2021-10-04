@@ -1,8 +1,6 @@
 const {Message, ImageModel} = require("../../db/db");
 const {createMessage, getMessageWithAuthor} = require("../../db/models/messageMethods");
 const {sendMessageWS, decodeMessage} = require("../../ws/wsMethods");
-const {ObjectId} = require("mongodb");
-const path = require("path");
 const {createImages} = require("../../db/models/imageMethods");
 
 const getMessage = async (req, res, next) => {

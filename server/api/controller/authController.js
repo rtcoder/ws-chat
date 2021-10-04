@@ -5,9 +5,7 @@ const jwt = require('jsonwebtoken');
 const registerRequest = async (req, res, next) => {
   try {
     const {first_name, last_name, email, password} = req.body;
-    console.log({first_name, last_name, email, password});
     const oldUser = await User.findOne({email});
-    console.log({oldUser});
     if (oldUser) {
       return res.status(409).json({
         message: "User Already Exist. Please Login"
@@ -15,12 +13,6 @@ const registerRequest = async (req, res, next) => {
     }
 
     const encryptedPassword = await bcrypt.hash(password, 10);
-    console.log({
-      first_name,
-      last_name,
-      email: email.toLowerCase(), // sanitize: convert email to lowercase
-      password: encryptedPassword,
-    });
     const user = await User.create({
       first_name,
       last_name,

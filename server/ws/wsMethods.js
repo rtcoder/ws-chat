@@ -69,19 +69,17 @@ const onRequest = request => {
     const query = {...request.resourceURL.query};
     const token = query.t;
     if (!token) {
-      request.close();
       return;
     }
     const decodedUser = jwt.verify(token, config.TOKEN_KEY);
     const userID = decodedUser.user_id;
-    console.log({userID});
 
     console.info((new Date()) + ' Recieved a new connection from origin ' + request.origin + '.');
     const connection = request.accept(null, request.origin);
 
     clients[userID] = connection;
 
-    console.info('connected: ' + userID, decodedUser);
+    console.info('connected: ' + userID);
 
     connection.on('message', onMessage(userID));
     connection.on('close', onClose(userID));
