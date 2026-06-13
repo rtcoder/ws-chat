@@ -5,12 +5,15 @@ const cors = require('cors');
 const {authRouter} = require("./api/router/authRouter");
 const {apiRouter} = require("./api/router/apiRouter");
 const {pgConnect} = require("./db/db");
+const {getConfig} = require("./utils/config");
 const {ValidationError} = require("express-validation");
-const webSocketsServerPort = 8001;
 const webSocketServer = require('websocket').server;
 const http = require('http');
 const {onRequest} = require("./ws/wsMethods");
 
+const config = getConfig();
+const apiPort = config.PORTS.API;
+const webSocketsServerPort = config.PORTS.WS;
 
 app.use(cors());
 // app.use(express.urlencoded());
@@ -36,5 +39,5 @@ wsServer.on('request', onRequest);
 
 pgConnect()
   .then(() => console.info('Connected to PostgreSQL'))
-  .then(() => app.listen(process.env.API_PORT, () => console.info("Server started and is listening on port " + process.env.API_PORT)))
+  .then(() => app.listen(apiPort, () => console.info("Server started and is listening on port " + apiPort)))
   .catch(err => console.error(err));

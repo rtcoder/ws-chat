@@ -1,8 +1,7 @@
 import {getAuthToken, setAuthToken, setLoggedUser} from './auth';
+import {API_URL} from './config';
 import {encodeJson} from './encoding';
 import type {ApiResult, Message, User} from '../types';
-
-const API_URL = 'http://localhost:4001';
 
 async function fetchApi<T>(input: RequestInfo | URL, init: RequestInit = {}): Promise<ApiResult<T>> {
   const headers = new Headers(init.headers);

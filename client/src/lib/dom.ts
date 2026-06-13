@@ -1,3 +1,5 @@
+import {API_URL} from './config';
+
 type Attrs<K extends keyof HTMLElementTagNameMap> = Partial<HTMLElementTagNameMap[K]> & {
   className?: string;
   text?: string;
@@ -48,7 +50,7 @@ export function icon(name: string, className = '') {
 export function image(src: string, className = '', alt = '') {
   const normalizedSrc = src.startsWith('data:image') || src.startsWith('https://') || src.startsWith('http://')
     ? src
-    : `http://localhost:8000/${src}`;
+    : `${API_URL}/${src}`;
 
   return createElement('img', {
     className,

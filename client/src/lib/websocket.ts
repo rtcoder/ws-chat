@@ -1,4 +1,5 @@
 import {getAuthToken} from './auth';
+import {WS_URL} from './config';
 import {decodeJson} from './encoding';
 import type {Message} from '../types';
 
@@ -13,7 +14,7 @@ export function connectMessagesSocket(onMessage: (message: Message) => void) {
       return;
     }
 
-    socket = new WebSocket(`ws://127.0.0.1:8001?t=${token}`);
+    socket = new WebSocket(`${WS_URL}?t=${token}`);
 
     socket.addEventListener('open', () => {
       console.info('WebSocket Client Connected');
