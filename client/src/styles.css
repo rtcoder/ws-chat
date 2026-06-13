@@ -35,6 +35,7 @@ button {
 
 .chat-container {
   min-height: 100vh;
+  min-height: 100dvh;
   background:
     radial-gradient(circle at 24px 24px, rgba(56, 189, 248, 0.08) 0 1px, transparent 1px),
     linear-gradient(135deg, #0d1117 0%, #121826 50%, #0b111b 100%);
@@ -45,6 +46,8 @@ button {
   display: grid;
   grid-template-columns: minmax(260px, 320px) minmax(420px, 1fr) minmax(250px, 300px);
   height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   padding: 14px;
   gap: 14px;
 }
@@ -219,6 +222,7 @@ textarea::placeholder {
 .chat {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
   overflow: hidden;
   border-radius: 8px;
 }
@@ -296,10 +300,17 @@ textarea::placeholder {
   background: var(--accent-soft);
 }
 
+.messages-pane {
+  min-height: 0;
+  overflow: hidden;
+}
+
 .messages {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
+  height: 100%;
   min-height: 0;
   padding: 18px;
   overflow: auto;
@@ -487,14 +498,22 @@ textarea::placeholder {
   object-fit: cover;
 }
 
+.composer-panel {
+  min-height: 0;
+  border-top: 1px solid var(--line-soft);
+  background: rgba(20, 28, 41, 0.82);
+}
+
+.message-composer {
+  min-height: 0;
+}
+
 .bottom-bar {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: end;
   gap: 10px;
   padding: 14px 16px;
-  border-top: 1px solid var(--line-soft);
-  background: rgba(20, 28, 41, 0.82);
 }
 
 .bottom-bar button,
@@ -833,11 +852,28 @@ textarea {
 }
 
 @media (max-width: 760px) {
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .chat-container {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
   .app-shell {
     grid-template-columns: 1fr;
-    height: auto;
-    min-height: 100vh;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    gap: 0;
     padding: 0;
+    overflow: hidden;
   }
 
   .app-sidebar {
@@ -845,7 +881,9 @@ textarea {
   }
 
   .chat {
-    min-height: 100vh;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
     border: 0;
     border-radius: 0;
   }
@@ -853,6 +891,10 @@ textarea {
   .chat-header {
     min-height: 68px;
     padding: 12px;
+  }
+
+  .messages-pane {
+    min-height: 0;
   }
 
   .messages {
@@ -866,7 +908,21 @@ textarea {
   .bottom-bar {
     grid-template-columns: 40px minmax(0, 1fr) 40px;
     gap: 8px;
-    padding: 10px;
+    padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .bottom-bar button,
+  .bottom-bar label {
+    width: 40px;
+    height: 40px;
+  }
+
+  .input-field-container .text-field-container {
+    min-height: 40px;
+  }
+
+  textarea {
+    font-size: 16px;
   }
 
   .chat-actions button {

@@ -109,7 +109,7 @@ export function MessageComposer(onSendMessage: (value: {text: string; images: st
   textFieldContainer.append(textarea, EmojiPicker(insertEmoji));
   inputFieldContainer.append(textFieldContainer);
 
-  return createElement('div', {}, [
+  return createElement('div', {className: 'message-composer'}, [
     createElement('div', {className: 'bottom-bar'}, [
       createElement('label', {}, [fileInput, icon('add_photo_alternate')]),
       inputFieldContainer,

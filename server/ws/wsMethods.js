@@ -12,22 +12,10 @@ const WS_ACTIONS = {
   REACTION_ADD: 'reaction_add',
 };
 const decodeMessage = message => {
-  return JSON.parse(
-    decodeURIComponent(
-      escape(
-        Buffer.from(message, 'base64').toString()
-      )
-    )
-  );
+  return JSON.parse(Buffer.from(message, 'base64').toString('utf8'));
 };
 const encodeMessage = message => {
-  return Buffer.from(
-    unescape(
-      encodeURIComponent(
-        JSON.stringify(message)
-      )
-    )
-  ).toString('base64');
+  return Buffer.from(JSON.stringify(message), 'utf8').toString('base64');
 };
 
 const addClient = (userID, connection) => {

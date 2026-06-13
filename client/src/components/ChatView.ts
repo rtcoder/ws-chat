@@ -152,7 +152,7 @@ export function ChatView() {
 
   const sidebarSlot = createElement('div');
   const headerSlot = createElement('div');
-  const messagesSlot = createElement('div');
+  const messagesSlot = createElement('div', {className: 'messages-pane'});
   const detailsSlot = createElement('div');
   const container = createElement('div', {className: 'chat-container'}, [
     createElement('div', {className: 'app-shell'}, [
@@ -160,9 +160,11 @@ export function ChatView() {
       createElement('main', {className: 'chat'}, [
         headerSlot,
         messagesSlot,
-        MessageComposer((value) => {
-          postMessage(value);
-        })
+        createElement('div', {className: 'composer-panel'}, [
+          MessageComposer((value) => {
+            postMessage(value);
+          })
+        ])
       ]),
       detailsSlot
     ])
