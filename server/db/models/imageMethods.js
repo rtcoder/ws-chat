@@ -1,24 +1,26 @@
 const {randomUUID} = require('crypto');
-const {pgQuery} = require('../db');
+const {db} = require('../db');
+const {images} = require('../schema');
 
 const createImages = async (
-  images,
+  imagePaths,
   author_id,
   afterSaveAll = () => {
   }
 ) => {
-  if (!images.length) {
+  if (!imagePaths.length) {
     afterSaveAll([]);
     return [];
   }
 
-  await Promise.all(images.map((img) => pgQuery(`
-    INSERT INTO images (id, path, author_id)
-    VALUES ($1, $2, $3)
-  `, [randomUUID(), img, author_id])));
+  await db.insert(images).values(imagePaths.map((imagePath) => ({
+    id: randomUUID(),
+    path: imagePath,
+    authorId: author_id,
+  })));
 
-  afterSaveAll(images);
-  return images;
+  afterSaveAll(imagePaths);
+  return imagePaths;
 };
 
 module.exports = {

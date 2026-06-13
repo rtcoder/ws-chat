@@ -1,5 +1,7 @@
 const {randomUUID} = require('crypto');
-const {pgQuery} = require('../db');
+const {asc, desc, eq, inArray} = require('drizzle-orm');
+const {db} = require('../db');
+const {messageReactions, messages, users} = require('../schema');
 
 const MESSAGE_TYPES = {
   MESSAGE: 'msg',
@@ -13,46 +15,67 @@ const MESSAGE_TYPES = {
   INFO_CHANGE_NICKNAME: 'info_change_nickname',
 };
 
-const toMessage = row => ({
-  _id: row.id,
-  text: row.text,
-  images: row.images || [],
+const toMessage = ({message, author, reactions}) => ({
+  _id: message.id,
+  text: message.text,
+  images: message.images || [],
   author: {
-    _id: row.author_id,
-    first_name: row.author_first_name,
-    last_name: row.author_last_name,
-    avatar: row.author_avatar,
+    _id: author.id,
+    first_name: author.firstName,
+    last_name: author.lastName,
+    avatar: author.avatar,
   },
-  relatedUser: row.related_user_id || null,
-  reactions: row.reactions || [],
-  replyTo: row.reply_to_id || null,
-  type: row.type,
-  isSpoiler: row.is_spoiler,
-  isOnlyEmoji: row.is_only_emoji,
-  chatId: row.chat_id || null,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
+  relatedUser: message.relatedUserId || null,
+  reactions,
+  replyTo: message.replyToId || null,
+  type: message.type,
+  isSpoiler: message.isSpoiler,
+  isOnlyEmoji: message.isOnlyEmoji,
+  chatId: message.chatId || null,
+  createdAt: message.createdAt,
+  updatedAt: message.updatedAt,
 });
 
-const messageSelect = `
-  SELECT
-    messages.*,
-    users.first_name AS author_first_name,
-    users.last_name AS author_last_name,
-    users.avatar AS author_avatar,
-    COALESCE(
-      json_agg(
-        json_build_object(
-          'user', message_reactions.user_id,
-          'type', message_reactions.type
-        )
-      ) FILTER (WHERE message_reactions.user_id IS NOT NULL),
-      '[]'
-    ) AS reactions
-  FROM messages
-  JOIN users ON users.id = messages.author_id
-  LEFT JOIN message_reactions ON message_reactions.message_id = messages.id
-`;
+const mapRowsToMessages = (rows) => {
+  const messagesById = new Map();
+
+  rows.forEach((row) => {
+    if (!messagesById.has(row.message.id)) {
+      messagesById.set(row.message.id, {
+        message: row.message,
+        author: row.author,
+        reactions: [],
+      });
+    }
+
+    if (row.reaction?.userId) {
+      messagesById.get(row.message.id).reactions.push({
+        user: row.reaction.userId,
+        type: row.reaction.type,
+      });
+    }
+  });
+
+  return [...messagesById.values()].map(toMessage);
+};
+
+const selectMessagesWithAuthors = () => db
+  .select({
+    message: messages,
+    author: {
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      avatar: users.avatar,
+    },
+    reaction: {
+      userId: messageReactions.userId,
+      type: messageReactions.type,
+    },
+  })
+  .from(messages)
+  .innerJoin(users, eq(users.id, messages.authorId))
+  .leftJoin(messageReactions, eq(messageReactions.messageId, messages.id));
 
 const createMessage = async (
   data,
@@ -67,32 +90,18 @@ const createMessage = async (
   const isOnlyEmoji = emo_test();
   const id = randomUUID();
 
-  await pgQuery(`
-    INSERT INTO messages (
-      id,
-      text,
-      images,
-      author_id,
-      related_user_id,
-      reply_to_id,
-      type,
-      is_spoiler,
-      is_only_emoji,
-      chat_id
-    )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-  `, [
+  await db.insert(messages).values({
     id,
-    data.text || '',
-    data.images || [],
-    data.user_id,
-    data.relatedUser || null,
-    data.replyTo || null,
-    data.type || MESSAGE_TYPES.MESSAGE,
-    Boolean(data.isSpoiler),
+    text: data.text || '',
+    images: data.images || [],
+    authorId: data.user_id,
+    relatedUserId: data.relatedUser || null,
+    replyToId: data.replyTo || null,
+    type: data.type || MESSAGE_TYPES.MESSAGE,
+    isSpoiler: Boolean(data.isSpoiler),
     isOnlyEmoji,
-    data.chatId || null,
-  ]);
+    chatId: data.chatId || null,
+  });
 
   const message = await getMessageWithAuthor(id);
   afterSave(message);
@@ -100,27 +109,30 @@ const createMessage = async (
 };
 
 const getMessageWithAuthor = async (id) => {
-  const result = await pgQuery(`
-    ${messageSelect}
-    WHERE messages.id = $1
-    GROUP BY messages.id, users.id
-  `, [id]);
+  const rows = await selectMessagesWithAuthors()
+    .where(eq(messages.id, id));
 
-  return result.rows[0] ? toMessage(result.rows[0]) : null;
+  return mapRowsToMessages(rows)[0] || null;
 };
 
 const getLatestMessages = async (limit = 30) => {
-  const result = await pgQuery(`
-    SELECT * FROM (
-      ${messageSelect}
-      GROUP BY messages.id, users.id
-      ORDER BY messages.created_at DESC
-      LIMIT $1
-    ) latest_messages
-    ORDER BY latest_messages.created_at ASC
-  `, [limit]);
+  const latestRows = await db
+    .select({id: messages.id})
+    .from(messages)
+    .orderBy(desc(messages.createdAt))
+    .limit(limit);
 
-  return result.rows.map(toMessage);
+  const ids = latestRows.map(({id}) => id).reverse();
+
+  if (!ids.length) {
+    return [];
+  }
+
+  const rows = await selectMessagesWithAuthors()
+    .where(inArray(messages.id, ids))
+    .orderBy(asc(messages.createdAt));
+
+  return mapRowsToMessages(rows);
 };
 
 module.exports = {

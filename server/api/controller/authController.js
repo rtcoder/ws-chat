@@ -1,5 +1,7 @@
 const {randomUUID} = require('crypto');
-const {pgQuery} = require("../../db/db");
+const {eq} = require('drizzle-orm');
+const {db} = require("../../db/db");
+const {users} = require("../../db/schema");
 const {getConfig} = require("../../utils/config");
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -8,8 +10,8 @@ const getTokenKey = () => process.env.TOKEN_KEY || getConfig().API_SECRET;
 
 const toUserResponse = (user, token) => ({
   _id: user.id,
-  first_name: user.first_name,
-  last_name: user.last_name,
+  first_name: user.firstName,
+  last_name: user.lastName,
   avatar: user.avatar,
   email: user.email,
   token,
@@ -19,9 +21,13 @@ const registerRequest = async (req, res, next) => {
   try {
     const {first_name, last_name, email, password} = req.body;
     const normalizedEmail = email.toLowerCase();
-    const oldUser = await pgQuery('SELECT id FROM users WHERE email = $1', [normalizedEmail]);
+    const oldUser = await db
+      .select({id: users.id})
+      .from(users)
+      .where(eq(users.email, normalizedEmail))
+      .limit(1);
 
-    if (oldUser.rows.length) {
+    if (oldUser.length) {
       return res.status(409).json({
         message: "User Already Exist. Please Login"
       });
@@ -29,12 +35,22 @@ const registerRequest = async (req, res, next) => {
 
     const encryptedPassword = await bcrypt.hash(password, 10);
     const userId = randomUUID();
-    const result = await pgQuery(`
-      INSERT INTO users (id, first_name, last_name, email, password)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, first_name, last_name, avatar, email
-    `, [userId, first_name, last_name, normalizedEmail, encryptedPassword]);
-    const user = result.rows[0];
+    const [user] = await db
+      .insert(users)
+      .values({
+        id: userId,
+        firstName: first_name,
+        lastName: last_name,
+        email: normalizedEmail,
+        password: encryptedPassword,
+      })
+      .returning({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        avatar: users.avatar,
+        email: users.email,
+      });
 
     const token = jwt.sign(
       {user_id: user.id, email: normalizedEmail},
@@ -55,12 +71,18 @@ const loginRequest = async (req, res, next) => {
   try {
     const {email, password} = req.body;
     const normalizedEmail = email.toLowerCase();
-    const result = await pgQuery(`
-      SELECT id, first_name, last_name, avatar, email, password
-      FROM users
-      WHERE email = $1
-    `, [normalizedEmail]);
-    const user = result.rows[0];
+    const [user] = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        avatar: users.avatar,
+        email: users.email,
+        password: users.password,
+      })
+      .from(users)
+      .where(eq(users.email, normalizedEmail))
+      .limit(1);
 
     if (user && (await bcrypt.compare(password, user.password))) {
       const token = jwt.sign(

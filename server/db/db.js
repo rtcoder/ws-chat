@@ -1,16 +1,18 @@
 const {Pool} = require('pg');
+const {drizzle} = require('drizzle-orm/node-postgres');
+const {sql} = require('drizzle-orm');
 const {getConfig} = require('../utils/config');
+const schema = require('./schema');
 
 const pool = new Pool(getConfig().DB.POSTGRES);
-
-const query = (text, params) => pool.query(text, params);
+const db = drizzle({client: pool, schema});
 
 const connect = async () => {
-  await query('SELECT 1');
+  await db.execute(sql`SELECT 1`);
 };
 
 module.exports = {
+  db,
   pgPool: pool,
-  pgQuery: query,
   pgConnect: connect,
 };
