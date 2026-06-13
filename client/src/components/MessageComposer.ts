@@ -45,7 +45,9 @@ export function MessageComposer(onSendMessage: (value: {text: string; images: st
 
   const sendMessage = () => {
     const value = textarea.value.trim();
-    if (!value) {
+    const hasImages = files.length > 0;
+
+    if (!value && !hasImages) {
       textarea.focus();
       return;
     }
