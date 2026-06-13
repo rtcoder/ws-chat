@@ -1,18 +1,13 @@
-const {Message, ImageModel} = require("../../db/db");
-const {createMessage, getMessageWithAuthor} = require("../../db/models/messageMethods");
+const {createMessage, getLatestMessages, getMessageWithAuthor} = require("../../db/models/messageMethods");
 const {sendMessageWS, decodeMessage} = require("../../ws/wsMethods");
 const {createImages} = require("../../db/models/imageMethods");
 
 const getMessage = async (req, res, next) => {
   try {
-    res.json(
-      (await Message.find()
-        .populate('author', 'first_name last_name avatar')
-        .sort({$natural: -1}).limit(30)
-        .exec()).reverse()
-    );
+    res.json(await getLatestMessages(30));
   } catch (err) {
     console.error(err);
+    res.status(500).send(err);
   }
 };
 
@@ -80,7 +75,7 @@ const postMessage = async (req, res, next) => {
 
     const resultImagesPathList = saveBase64ToFile((msgData.images || []));
 
-    createImages(resultImagesPathList, data.user_id, savedImages => {
+    createImages(resultImagesPathList, req.user.user_id, savedImages => {
       createMessage({...msgData, images: savedImages, user_id: req.user.user_id}, (message) => {
         getMessageWithAuthor(message._id).then((result) => {
           sendMessageWS(result);

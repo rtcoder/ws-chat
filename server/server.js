@@ -4,7 +4,7 @@ const app = express();
 const cors = require('cors');
 const {authRouter} = require("./api/router/authRouter");
 const {apiRouter} = require("./api/router/apiRouter");
-const {mongoConnect} = require("./db/db");
+const {pgConnect} = require("./db/db");
 const {ValidationError} = require("express-validation");
 const webSocketsServerPort = 8001;
 const webSocketServer = require('websocket').server;
@@ -34,7 +34,7 @@ const wsServer = new webSocketServer({
 });
 wsServer.on('request', onRequest);
 
-mongoConnect()
-  .then(() => console.info('Connected to MongoDB'))
+pgConnect()
+  .then(() => console.info('Connected to PostgreSQL'))
   .then(() => app.listen(8000, () => console.info("Server started and is listening on port 8000")))
   .catch(err => console.error(err));

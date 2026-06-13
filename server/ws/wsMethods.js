@@ -1,6 +1,8 @@
 const jwt = require("jsonwebtoken");
 const {createMessage, getMessageWithAuthor} = require("../db/models/messageMethods");
-const config = process.env;
+const {getConfig} = require("../utils/config");
+
+const getTokenKey = () => process.env.TOKEN_KEY || getConfig().API_SECRET;
 
 const clients = {};
 
@@ -71,7 +73,7 @@ const onRequest = request => {
     if (!token) {
       return;
     }
-    const decodedUser = jwt.verify(token, config.TOKEN_KEY);
+    const decodedUser = jwt.verify(token, getTokenKey());
     const userID = decodedUser.user_id;
 
     console.info((new Date()) + ' Recieved a new connection from origin ' + request.origin + '.');

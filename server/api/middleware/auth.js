@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
+const {getConfig} = require("../../utils/config");
 
-const config = process.env;
+const getTokenKey = () => process.env.TOKEN_KEY || getConfig().API_SECRET;
 
 const verifyToken = (req, res, next) => {
   const token = req.body.token
@@ -11,7 +12,7 @@ const verifyToken = (req, res, next) => {
     return res.status(403).send({message: "A token is required for authentication"});
   }
   try {
-    const decoded = jwt.verify(token, config.TOKEN_KEY);
+    const decoded = jwt.verify(token, getTokenKey());
     req.user = decoded;
   } catch (err) {
     return res.status(401).send({message: "Invalid Token"});

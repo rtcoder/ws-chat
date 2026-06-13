@@ -1,32 +1,24 @@
-const {ImageModel} = require("../../db/db");
-const {ObjectId} = require("mongodb");
+const {randomUUID} = require('crypto');
+const {pgQuery} = require('../db');
 
 const createImages = async (
   images,
   author_id,
-  afterSaveAll = (imagesList) => {
+  afterSaveAll = () => {
   }
 ) => {
-
-  const imagesToProcess = images.length;
-  if (!imagesToProcess) {
+  if (!images.length) {
     afterSaveAll([]);
-    return;
+    return [];
   }
-  let processedImages = 0;
-  const imagesToReturn = [];
-  for (const img of images) {
-    await new ImageModel({
-      path: img,
-      author: new ObjectId(author_id)
-    }).save((err, result) => {
-      processedImages++;
-      imagesToReturn.push(img);
-      if (imagesToProcess === processedImages) {
-        afterSaveAll(imagesToReturn);
-      }
-    });
-  }
+
+  await Promise.all(images.map((img) => pgQuery(`
+    INSERT INTO images (id, path, author_id)
+    VALUES ($1, $2, $3)
+  `, [randomUUID(), img, author_id])));
+
+  afterSaveAll(images);
+  return images;
 };
 
 module.exports = {
