@@ -4,7 +4,7 @@ const {getConfig} = require("../utils/config");
 
 const getTokenKey = () => process.env.TOKEN_KEY || getConfig().API_SECRET;
 
-const clients = {};
+const clients = new Map();
 
 const WS_ACTIONS = {
   MESSAGE_ADD: 'message_add',
@@ -30,11 +30,40 @@ const encodeMessage = message => {
   ).toString('base64');
 };
 
+const addClient = (userID, connection) => {
+  if (!clients.has(userID)) {
+    clients.set(userID, new Set());
+  }
+
+  clients.get(userID).add(connection);
+};
+
+const removeClient = (userID, connection) => {
+  const userConnections = clients.get(userID);
+
+  if (!userConnections) {
+    return;
+  }
+
+  userConnections.delete(connection);
+
+  if (!userConnections.size) {
+    clients.delete(userID);
+  }
+};
+
 const sendMessageWS = json => {
-  Object.keys(clients).map((client) => {
-    clients[client].sendUTF(
-      encodeMessage(json)
-    );
+  const payload = encodeMessage(json);
+
+  clients.forEach((userConnections, userID) => {
+    userConnections.forEach((connection) => {
+      try {
+        connection.sendUTF(payload);
+      } catch (err) {
+        console.error(err);
+        removeClient(userID, connection);
+      }
+    });
   });
 };
 
@@ -63,7 +92,7 @@ const onMessage = user_id => async message => {
 
 const onClose = user_id => connection => {
   console.info((new Date()) + " Peer " + user_id + " disconnected.");
-  delete clients[user_id];
+  removeClient(user_id, connection);
 };
 
 const onRequest = request => {
@@ -79,9 +108,9 @@ const onRequest = request => {
     console.info((new Date()) + ' Recieved a new connection from origin ' + request.origin + '.');
     const connection = request.accept(null, request.origin);
 
-    clients[userID] = connection;
+    addClient(userID, connection);
 
-    console.info('connected: ' + userID);
+    console.info('connected: ' + userID + ' tabs: ' + clients.get(userID).size);
 
     connection.on('message', onMessage(userID));
     connection.on('close', onClose(userID));
