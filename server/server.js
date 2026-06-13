@@ -36,5 +36,5 @@ wsServer.on('request', onRequest);
 
 pgConnect()
   .then(() => console.info('Connected to PostgreSQL'))
-  .then(() => app.listen(8000, () => console.info("Server started and is listening on port 8000")))
+  .then(() => app.listen(process.env.API_PORT, () => console.info("Server started and is listening on port " + process.env.API_PORT)))
   .catch(err => console.error(err));
