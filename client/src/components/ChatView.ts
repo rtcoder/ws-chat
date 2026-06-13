@@ -1,7 +1,7 @@
 import {getMessages, postMessage} from '../lib/api';
 import {getLoggedUser} from '../lib/auth';
 import {connectMessagesSocket} from '../lib/websocket';
-import {createElement, render} from '../lib/dom';
+import {createElement, icon, image, render} from '../lib/dom';
 import {createStore} from '../lib/store';
 import type {Message} from '../types';
 import {MessageList} from './MessageList';
@@ -29,6 +29,25 @@ function formatMessagePreview(message?: Message) {
   }
 
   return message.text || 'New activity';
+}
+
+function formatDateLabel(value?: string) {
+  if (!value) {
+    return 'Just now';
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Just now';
+  }
+
+  return new Intl.DateTimeFormat('en', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
 }
 
 function initials(name = 'WS') {
@@ -90,7 +109,28 @@ function Sidebar(messages: Message[], authId: string) {
   ]);
 }
 
-function ChatHeader(messages: Message[], userName: string) {
+function getMediaEntries(messages: Message[]) {
+  return messages
+    .flatMap((message) => message.images.map((src, index) => ({
+      id: `${message._id}-${index}`,
+      src,
+      author: message.author.first_name,
+      createdAt: message.createdAt,
+      caption: message.text,
+    })))
+    .sort((left, right) => {
+      const leftTime = left.createdAt ? new Date(left.createdAt).getTime() : 0;
+      const rightTime = right.createdAt ? new Date(right.createdAt).getTime() : 0;
+      return rightTime - leftTime;
+    });
+}
+
+function ChatHeader(
+  messages: Message[],
+  userName: string,
+  mediaCount: number,
+  onOpenMedia: () => void
+) {
   return createElement('header', {className: 'chat-header'}, [
     createElement('div', {className: 'chat-heading'}, [
       createElement('div', {className: 'room-avatar', text: 'G'}),
@@ -100,6 +140,17 @@ function ChatHeader(messages: Message[], userName: string) {
       ])
     ]),
     createElement('div', {className: 'chat-actions'}, [
+      createElement('button', {
+        type: 'button',
+        title: 'Open media gallery',
+        className: 'chat-action media-trigger',
+        on: {
+          click: () => onOpenMedia()
+        }
+      }, [
+        icon('photo_library'),
+        createElement('span', {className: 'action-label', text: `Media ${mediaCount}`})
+      ]),
       createElement('button', {type: 'button', title: 'Search'}, [
         createElement('span', {className: 'material-icons icon', text: 'search'})
       ]),
@@ -131,17 +182,70 @@ function ChatDetails(messages: Message[], authId: string) {
           createElement('span', {text: 'People'})
         ])
       ])
-    ]),
-    createElement('div', {className: 'details-card'}, [
-      createElement('div', {className: 'section-label', text: 'Shared'}),
-      createElement('button', {className: 'detail-link', type: 'button'}, [
-        createElement('span', {className: 'material-icons icon', text: 'image'}),
-        createElement('span', {text: 'Media gallery'})
+    ])
+  ]);
+}
+
+function MediaGalleryModal(
+  messages: Message[],
+  open: boolean,
+  onClose: () => void
+) {
+  if (!open) {
+    return createElement('div');
+  }
+
+  const mediaEntries = getMediaEntries(messages);
+
+  return createElement('div', {
+    className: 'media-modal-backdrop',
+    on: {
+      click: (event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }
+    }
+  }, [
+    createElement('div', {
+      className: 'media-modal',
+      attrs: {
+        role: 'dialog',
+        'aria-modal': 'true',
+        'aria-label': 'Shared media gallery'
+      }
+    }, [
+      createElement('div', {className: 'media-modal-header'}, [
+        createElement('div', {}, [
+          createElement('div', {className: 'section-label', text: 'Shared media'}),
+          createElement('h2', {text: 'Gallery'})
+        ]),
+        createElement('button', {
+          type: 'button',
+          className: 'media-modal-close',
+          title: 'Close gallery',
+          on: {
+            click: () => onClose()
+          }
+        }, [icon('close')])
       ]),
-      createElement('button', {className: 'detail-link', type: 'button'}, [
-        createElement('span', {className: 'material-icons icon', text: 'push_pin'}),
-        createElement('span', {text: 'Pinned messages'})
-      ])
+      createElement('div', {className: 'media-modal-body'}, mediaEntries.length
+        ? mediaEntries.map((entry) => createElement('article', {className: 'media-item', attrs: {'data-id': entry.id}}, [
+          createElement('div', {className: 'media-thumb'}, [
+            image(entry.src, 'media-image', `${entry.author} media`)
+          ]),
+          createElement('div', {className: 'media-meta'}, [
+            createElement('span', {className: 'media-author', text: entry.author}),
+            createElement('span', {className: 'media-date', text: formatDateLabel(entry.createdAt)}),
+            createElement('span', {className: 'media-caption', text: entry.caption || 'Image upload'})
+          ])
+        ]))
+        : [
+          createElement('div', {className: 'empty-media'}, [
+            icon('image'),
+            createElement('span', {text: 'No images shared yet'})
+          ])
+        ])
     ])
   ]);
 }
@@ -149,11 +253,13 @@ function ChatDetails(messages: Message[], authId: string) {
 export function ChatView() {
   const user = getLoggedUser();
   const messages = createStore<Message[]>([]);
+  const mediaGalleryOpen = createStore(false);
 
   const sidebarSlot = createElement('div');
   const headerSlot = createElement('div');
   const messagesSlot = createElement('div', {className: 'messages-pane'});
   const detailsSlot = createElement('div');
+  const modalSlot = createElement('div');
   const container = createElement('div', {className: 'chat-container'}, [
     createElement('div', {className: 'app-shell'}, [
       sidebarSlot,
@@ -167,16 +273,23 @@ export function ChatView() {
         ])
       ]),
       detailsSlot
-    ])
+    ]),
+    modalSlot
   ]);
 
   messages.subscribe((state) => {
     const authId = user?._id || '';
     const userName = user?.first_name || 'You';
+    const mediaCount = getMediaEntries(state).length;
     render(sidebarSlot, Sidebar(state, authId));
-    render(headerSlot, ChatHeader(state, userName));
+    render(headerSlot, ChatHeader(state, userName, mediaCount, () => mediaGalleryOpen.set(true)));
     render(messagesSlot, MessageList(state, user?._id || ''));
     render(detailsSlot, ChatDetails(state, authId));
+    render(modalSlot, MediaGalleryModal(state, mediaGalleryOpen.get(), () => mediaGalleryOpen.set(false)));
+  });
+
+  mediaGalleryOpen.subscribe((open) => {
+    render(modalSlot, MediaGalleryModal(messages.get(), open, () => mediaGalleryOpen.set(false)));
   });
 
   getMessages()

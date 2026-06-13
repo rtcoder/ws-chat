@@ -12,6 +12,8 @@ export type Message = {
   type: string;
   author: User;
   isOnlyEmoji?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type MessageGroup = {
