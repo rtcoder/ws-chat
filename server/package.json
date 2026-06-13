@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "migrate": "node db/migrate.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "npx nodemon server.js"
   },
