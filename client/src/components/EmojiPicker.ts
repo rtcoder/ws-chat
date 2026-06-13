@@ -38,6 +38,11 @@ export function EmojiPicker(onInsertEmoji: (emoji: string) => void) {
   const trigger = icon('tag_faces');
   const panel = createElement('div', {className: 'emojis-container'});
 
+  const closePanel = () => {
+    isOpen = false;
+    panel.remove();
+  };
+
   const drawPanel = () => {
     if (!isOpen) {
       panel.remove();
@@ -65,7 +70,12 @@ export function EmojiPicker(onInsertEmoji: (emoji: string) => void) {
             className: 'emoji-item',
             title: emojiItem.unicodeName,
             text: emojiItem.character,
-            on: {click: () => onInsertEmoji(emojiItem.character)}
+            on: {
+              click: () => {
+                onInsertEmoji(emojiItem.character);
+                closePanel();
+              }
+            }
           })))
       ]))
     ]));
@@ -74,6 +84,18 @@ export function EmojiPicker(onInsertEmoji: (emoji: string) => void) {
     wrapper.append(panel);
     search.focus();
   };
+
+  document.addEventListener('pointerdown', (event) => {
+    const target = event.target;
+
+    if (!isOpen || !(target instanceof Node)) {
+      return;
+    }
+
+    if (!wrapper.contains(target)) {
+      closePanel();
+    }
+  });
 
   trigger.addEventListener('click', () => {
     isOpen = !isOpen;

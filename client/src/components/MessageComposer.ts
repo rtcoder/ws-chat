@@ -46,6 +46,7 @@ export function MessageComposer(onSendMessage: (value: {text: string; images: st
   const sendMessage = () => {
     const value = textarea.value.trim();
     if (!value) {
+      textarea.focus();
       return;
     }
 
@@ -54,6 +55,7 @@ export function MessageComposer(onSendMessage: (value: {text: string; images: st
     textarea.value = '';
     updateTextareaHeight(40);
     drawPreview();
+    textarea.focus();
   };
 
   textarea.addEventListener('keydown', (event) => {
