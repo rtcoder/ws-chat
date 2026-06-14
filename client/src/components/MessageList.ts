@@ -46,6 +46,28 @@ function formatDuration(duration?: number | null) {
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
+function getReplyText(message?: Message | null) {
+  if (!message) {
+    return 'Original message unavailable';
+  }
+
+  if (message.text) {
+    return message.text;
+  }
+
+  const mediaItems = getMessageMedia(message);
+
+  if (!mediaItems.length) {
+    return 'Attachment';
+  }
+
+  if (mediaItems.length === 1) {
+    return mediaItems[0].name || `${mediaItems[0].kind} attachment`;
+  }
+
+  return `${mediaItems.length} attachments`;
+}
+
 function AudioAttachment(media: MediaItem) {
   const audioNode = audio(media.path, 'attachment-audio');
   const attachment = createElement('div', {className: 'audio-attachment'});
@@ -265,9 +287,11 @@ function AudioAttachment(media: MediaItem) {
 
 function MessageBubble(
   message: Message,
+  replyMessage: Message | null,
   canDelete: boolean,
   onPreviewMedia: (media: MediaItem) => void,
-  onDeleteMessage: (messageId: string) => void
+  onDeleteMessage: (messageId: string) => void,
+  onReplyMessage: (message: Message) => void
 ) {
   const mediaItems = getMessageMedia(message);
   let imagesDivClassName = 'images';
@@ -282,11 +306,33 @@ function MessageBubble(
     imagesDivClassName = `${imagesDivClassName} ${classes[`c${imagesLength}`] || ''}`.trim();
   }
 
-  const text = createElement('div', {
-    className: `text ${message.isOnlyEmoji ? 'only-emoji' : ''}`.trim(),
-    text: message.text
-  });
-  const content = createElement('div', {className: 'content-message'}, [text]);
+  const content = createElement('div', {className: 'content-message'}, []);
+
+  if (message.replyTo) {
+    content.append(createElement('div', {
+      className: 'message-reply-preview',
+      title: replyMessage ? 'Reply target' : 'Original message unavailable'
+    }, [
+      createElement('span', {className: 'message-reply-bar'}),
+      createElement('span', {className: 'message-reply-copy'}, [
+        createElement('span', {
+          className: 'message-reply-author',
+          text: replyMessage?.author.first_name || 'Deleted message'
+        }),
+        createElement('span', {
+          className: 'message-reply-text',
+          text: getReplyText(replyMessage)
+        })
+      ])
+    ]));
+  }
+
+  if (message.text) {
+    content.append(createElement('div', {
+      className: `text ${message.isOnlyEmoji ? 'only-emoji' : ''}`.trim(),
+      text: message.text
+    }));
+  }
 
   if (mediaItems.length) {
     content.append(createElement('div', {className: imagesDivClassName}, mediaItems.map((media) => (
@@ -312,7 +358,13 @@ function MessageBubble(
   }
 
   const options = createElement('div', {className: 'options'}, [
-    icon('reply'),
+    createElement('span', {
+      className: 'material-icons icon',
+      text: 'reply',
+      on: {
+        click: () => onReplyMessage(message)
+      }
+    }),
     canDelete
       ? createElement('span', {
         className: 'material-icons icon',
@@ -331,10 +383,12 @@ export function MessageList(
   messages: Message[],
   authId: string,
   onPreviewMedia: (media: MediaItem) => void,
-  onDeleteMessage: (messageId: string) => void
+  onDeleteMessage: (messageId: string) => void,
+  onReplyMessage: (message: Message) => void
 ) {
   const container = createElement('div', {className: 'messages'});
   const groups = mapMessagesToGroups(messages);
+  const messagesById = new Map(messages.map((message) => [message._id, message]));
 
   groups.forEach((group) => {
     const messageBelongsToLoggedUser = belongsToUser(group.author, authId);
@@ -348,7 +402,14 @@ export function MessageList(
       createElement('div', {className: 'user-group-content'}, [
         createElement('div', {className: 'user-name', text: group.author.first_name}),
         createElement('div', {className: 'group'}, group.messages.map((message) => (
-          MessageBubble(message, messageBelongsToLoggedUser, onPreviewMedia, onDeleteMessage)
+          MessageBubble(
+            message,
+            message.replyTo ? messagesById.get(message.replyTo) || null : null,
+            messageBelongsToLoggedUser,
+            onPreviewMedia,
+            onDeleteMessage,
+            onReplyMessage
+          )
         )))
       ]),
       createElement('div', {className: 'user-icon'}, [userIcon])

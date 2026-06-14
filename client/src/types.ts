@@ -43,7 +43,7 @@ export type MediaUpload = {
   waveform?: number[] | null;
   duration?: number | null;
 };
-export type SendMsgValue = {text: string; media: MediaUpload[]; type: string};
+export type SendMsgValue = {text: string; media: MediaUpload[]; type: string; replyTo?: string | null};
 export type SendMessage = (value: SendMsgValue) => void;
 export type Message = {
   _id: string;
@@ -53,6 +53,7 @@ export type Message = {
   type: string;
   author: User;
   isOnlyEmoji?: boolean;
+  replyTo?: string | null;
   createdAt?: string;
   updatedAt?: string;
 };

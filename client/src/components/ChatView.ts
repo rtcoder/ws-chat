@@ -326,11 +326,13 @@ export function ChatView() {
   const messages = createStore<Message[]>([]);
   const mediaGalleryOpen = createStore(false);
   const previewMedia = createStore<MediaItem | null>(null);
+  const replyToMessage = createStore<Message | null>(null);
 
   const sidebarSlot = createElement('div');
   const headerSlot = createElement('div');
   const messagesSlot = createElement('div', {className: 'messages-pane'});
   const detailsSlot = createElement('div');
+  const composerSlot = createElement('div', {className: 'composer-panel'});
   const modalSlot = createElement('div');
   const previewSlot = createElement('div');
   const removeMessage = (messageId: string) => {
@@ -338,6 +340,9 @@ export function ChatView() {
       .then(({error, status}) => {
         if (!error && status < 400) {
           messages.update((state) => state.filter((message) => message._id !== messageId));
+          if (replyToMessage.get()?._id === messageId) {
+            replyToMessage.set(null);
+          }
         }
       });
   };
@@ -347,11 +352,7 @@ export function ChatView() {
       createElement('main', {className: 'chat'}, [
         headerSlot,
         messagesSlot,
-        createElement('div', {className: 'composer-panel'}, [
-          MessageComposer((value) => {
-            postMessage(value);
-          })
-        ])
+        composerSlot
       ]),
       detailsSlot
     ]),
@@ -376,11 +377,20 @@ export function ChatView() {
       state,
       user?._id || '',
       (media) => previewMedia.set(media),
-      removeMessage
+      removeMessage,
+      (message) => replyToMessage.set(message)
     ));
     render(detailsSlot, ChatDetails(state, authId));
     render(modalSlot, MediaGalleryModal(state, mediaGalleryOpen.get(), () => mediaGalleryOpen.set(false)));
     render(previewSlot, MediaPreviewModal(previewMedia.get(), () => previewMedia.set(null)));
+
+    const currentReplyId = replyToMessage.get()?._id;
+    if (currentReplyId) {
+      const refreshedReplyMessage = state.find((message) => message._id === currentReplyId) || null;
+      if (refreshedReplyMessage !== replyToMessage.get()) {
+        replyToMessage.set(refreshedReplyMessage);
+      }
+    }
   });
 
   mediaGalleryOpen.subscribe((open) => {
@@ -389,6 +399,16 @@ export function ChatView() {
 
   previewMedia.subscribe((src) => {
     render(previewSlot, MediaPreviewModal(src, () => previewMedia.set(null)));
+  });
+
+  replyToMessage.subscribe((message) => {
+    render(composerSlot, MessageComposer({
+      replyTo: message,
+      onCancelReply: () => replyToMessage.set(null),
+      onSendMessage: (value) => {
+        postMessage(value);
+      }
+    }));
   });
 
   getMessages()

@@ -1,9 +1,33 @@
 import {createElement, icon, image, video} from '../lib/dom';
-import {getAttachmentCategory, getAttachmentIcon, MESSAGE_TYPES, replaceTextEmojis} from '../lib/messages';
-import {AttachmentCategory, MediaKind, MediaUpload, SendMessage} from '../types';
+import {getAttachmentCategory, getAttachmentIcon, getMessageMedia, MESSAGE_TYPES, replaceTextEmojis} from '../lib/messages';
+import {AttachmentCategory, MediaKind, MediaUpload, Message, SendMessage} from '../types';
 import {EmojiPicker} from './EmojiPicker';
 
-export function MessageComposer(onSendMessage: SendMessage) {
+type MessageComposerProps = {
+  onSendMessage: SendMessage;
+  replyTo: Message | null;
+  onCancelReply: () => void;
+};
+
+function getReplyPreview(message: Message | null) {
+  if (!message) {
+    return '';
+  }
+
+  if (message.text) {
+    return message.text;
+  }
+
+  const firstMedia = getMessageMedia(message)[0];
+
+  if (!firstMedia) {
+    return 'Attachment';
+  }
+
+  return firstMedia.name || `${firstMedia.kind[0].toUpperCase()}${firstMedia.kind.slice(1)} attachment`;
+}
+
+export function MessageComposer({onSendMessage, replyTo, onCancelReply}: MessageComposerProps) {
   let files: MediaUpload[] = [];
   let inputContainerHeight = 40;
 
@@ -18,6 +42,7 @@ export function MessageComposer(onSendMessage: SendMessage) {
   const inputFieldContainer = createElement('div', {className: 'input-field-container'});
   const preview = createElement('div', {className: 'files-preview'});
   const textFieldContainer = createElement('div', {className: 'text-field-container'});
+  const replyPreview = createElement('div', {className: 'composer-reply-preview'});
 
   const isVideoFile = (src: string) => src.startsWith('data:video/');
   const isImageFile = (src: string) => src.startsWith('data:image/');
@@ -320,6 +345,40 @@ export function MessageComposer(onSendMessage: SendMessage) {
     inputFieldContainer.prepend(preview);
   };
 
+  const drawReplyPreview = () => {
+    if (!replyTo) {
+      replyPreview.replaceChildren();
+      replyPreview.remove();
+      return;
+    }
+
+    replyPreview.replaceChildren(
+      createElement('div', {className: 'composer-reply-copy'}, [
+        createElement('span', {
+          className: 'composer-reply-label',
+          text: `Replying to ${replyTo.author.first_name}`
+        }),
+        createElement('span', {
+          className: 'composer-reply-text',
+          text: getReplyPreview(replyTo)
+        })
+      ]),
+      createElement('button', {
+        type: 'button',
+        className: 'composer-reply-close',
+        title: 'Cancel reply',
+        on: {
+          click: () => {
+            onCancelReply();
+            textarea.focus();
+          }
+        }
+      }, [icon('close')])
+    );
+
+    inputFieldContainer.prepend(replyPreview);
+  };
+
   const sendMessage = () => {
     const value = textarea.value.trim();
     const hasImages = files.length > 0;
@@ -329,11 +388,12 @@ export function MessageComposer(onSendMessage: SendMessage) {
       return;
     }
 
-    onSendMessage({text: value, media: files, type: MESSAGE_TYPES.MESSAGE});
+    onSendMessage({text: value, media: files, type: MESSAGE_TYPES.MESSAGE, replyTo: replyTo?._id || null});
     files = [];
     textarea.value = '';
     updateTextareaHeight(40);
     drawPreview();
+    onCancelReply();
     textarea.focus();
   };
 
@@ -407,6 +467,7 @@ export function MessageComposer(onSendMessage: SendMessage) {
 
   textFieldContainer.style.height = `${inputContainerHeight}px`;
   textFieldContainer.append(textarea, EmojiPicker(insertEmoji));
+  drawReplyPreview();
   inputFieldContainer.append(textFieldContainer);
 
   return createElement('div', {className: 'message-composer'}, [
