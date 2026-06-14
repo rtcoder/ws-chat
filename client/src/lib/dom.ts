@@ -1,16 +1,10 @@
+import {CreateElementAttrs, CreateElementChildren} from '../types';
 import {API_URL} from './config';
-
-type Attrs<K extends keyof HTMLElementTagNameMap> = Partial<HTMLElementTagNameMap[K]> & {
-  className?: string;
-  text?: string;
-  attrs?: Record<string, string>;
-  on?: Partial<Record<keyof HTMLElementEventMap, EventListener>>;
-};
 
 export function createElement<K extends keyof HTMLElementTagNameMap>(
   tag: K,
-  options: Attrs<K> = {},
-  children: Array<Node | string | null | undefined> = []
+  options: CreateElementAttrs<K> = {},
+  children: CreateElementChildren = []
 ) {
   const node = document.createElement(tag);
   const {text, attrs, on, ...props} = options;

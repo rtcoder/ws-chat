@@ -1,16 +1,7 @@
+import type {SocketPayload} from '../types';
 import {getAuthToken} from './auth';
 import {WS_URL} from './config';
 import {decodeJson} from './encoding';
-import type {Message} from '../types';
-
-export type SocketPayload =
-  | Message
-  | {
-    type: 'message_delete';
-    data: {
-      messageId: string;
-    };
-  };
 
 export function connectMessagesSocket(onMessage: (message: SocketPayload) => void) {
   let socket: WebSocket | null = null;

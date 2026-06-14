@@ -1,9 +1,9 @@
 import {createElement, icon, image, video} from '../lib/dom';
 import {getAttachmentCategory, getAttachmentIcon, MESSAGE_TYPES, replaceTextEmojis} from '../lib/messages';
-import type {MediaUpload} from '../types';
+import {AttachmentCategory, MediaKind, MediaUpload, SendMessage} from '../types';
 import {EmojiPicker} from './EmojiPicker';
 
-export function MessageComposer(onSendMessage: (value: {text: string; media: MediaUpload[]; type: string}) => void) {
+export function MessageComposer(onSendMessage: SendMessage) {
   let files: MediaUpload[] = [];
   let inputContainerHeight = 40;
 
@@ -139,13 +139,13 @@ export function MessageComposer(onSendMessage: (value: {text: string; media: Med
 
   const generateFilePoster = async (file: File) => {
     const category = getAttachmentCategory({
-      kind: 'file',
+      kind: MediaKind.FILE,
       name: file.name,
       mimeType: file.type || null,
       path: file.name,
     });
 
-    if (category === 'text') {
+    if (category === AttachmentCategory.TEXT) {
       const textPoster = await generateTextPoster(file);
       if (textPoster) {
         return textPoster;
@@ -162,13 +162,13 @@ export function MessageComposer(onSendMessage: (value: {text: string; media: Med
     }
 
     const extension = file.name.split('.').pop()?.toUpperCase() || 'FILE';
-    const label = category === 'sheet'
+    const label = category === AttachmentCategory.SHEET
       ? 'SHEET'
-      : category === 'archive'
+      : category === AttachmentCategory.ARCHIVE
         ? 'ARCHIVE'
-        : category === 'document'
+        : category === AttachmentCategory.DOCUMENT
           ? 'DOC'
-          : category === 'pdf'
+          : category === AttachmentCategory.PDF
             ? 'PDF'
             : 'FILE';
 
@@ -263,14 +263,14 @@ export function MessageComposer(onSendMessage: (value: {text: string; media: Med
 
     Promise.all(filesList.map(async (file) => {
       const dataUrl = await loadDataUrl(file);
-      const kind = file.type.startsWith('video/')
-        ? 'video'
+      const kind: MediaKind = file.type.startsWith('video/')
+        ? MediaKind.VIDEO
         : file.type.startsWith('image/')
-          ? 'image'
-          : 'file';
-      const poster = kind === 'video'
+          ? MediaKind.IMAGE
+          : MediaKind.FILE;
+      const poster = kind === MediaKind.VIDEO
         ? await generateVideoPoster(file)
-        : kind === 'file'
+        : kind === MediaKind.FILE
           ? await generateFilePoster(file)
           : null;
 

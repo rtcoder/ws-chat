@@ -1,13 +1,5 @@
 import {createElement, icon} from '../lib/dom';
-import type {EmojiItem} from '../types';
-
-type EmojiGroup = {
-  name: string;
-  subgroups: Array<{
-    name: string;
-    emojis: Array<Pick<EmojiItem, 'character' | 'unicodeName'>>;
-  }>;
-};
+import type {EmojiGroup, EmojiItem} from '../types';
 
 function groupEmojis(data: EmojiItem[]) {
   const groups = [...new Set(data.map(({group}) => group))];

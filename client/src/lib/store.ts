@@ -1,4 +1,5 @@
-export type Unsubscribe = () => void;
+import {Unsubscribe} from '../types';
+
 
 export function createStore<T>(initialState: T) {
   let state = initialState;
