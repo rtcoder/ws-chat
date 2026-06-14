@@ -1,4 +1,4 @@
-import {getMessages, postMessage} from '../lib/api';
+import {deleteMessage, getMessages, postMessage} from '../lib/api';
 import {getLoggedUser} from '../lib/auth';
 import {getMessageMedia} from '../lib/messages';
 import {connectMessagesSocket} from '../lib/websocket';
@@ -7,6 +7,17 @@ import {createStore} from '../lib/store';
 import type {MediaItem, Message} from '../types';
 import {MessageList} from './MessageList';
 import {MessageComposer} from './MessageComposer';
+
+function isDeleteSocketPayload(payload: unknown): payload is {type: 'message_delete'; data: {messageId: string}} {
+  return typeof payload === 'object'
+    && payload !== null
+    && 'type' in payload
+    && payload.type === 'message_delete'
+    && 'data' in payload
+    && typeof payload.data === 'object'
+    && payload.data !== null
+    && 'messageId' in payload.data;
+}
 
 function getUniqueContacts(messages: Message[], authId: string) {
   const contacts = new Map();
@@ -322,6 +333,14 @@ export function ChatView() {
   const detailsSlot = createElement('div');
   const modalSlot = createElement('div');
   const previewSlot = createElement('div');
+  const removeMessage = (messageId: string) => {
+    deleteMessage(messageId)
+      .then(({error, status}) => {
+        if (!error && status < 400) {
+          messages.update((state) => state.filter((message) => message._id !== messageId));
+        }
+      });
+  };
   const container = createElement('div', {className: 'chat-container'}, [
     createElement('div', {className: 'app-shell'}, [
       sidebarSlot,
@@ -353,7 +372,12 @@ export function ChatView() {
     const mediaCount = getMediaEntries(state).length;
     render(sidebarSlot, Sidebar(state, authId));
     render(headerSlot, ChatHeader(state, userName, mediaCount, () => mediaGalleryOpen.set(true)));
-    render(messagesSlot, MessageList(state, user?._id || '', (media) => previewMedia.set(media)));
+    render(messagesSlot, MessageList(
+      state,
+      user?._id || '',
+      (media) => previewMedia.set(media),
+      removeMessage
+    ));
     render(detailsSlot, ChatDetails(state, authId));
     render(modalSlot, MediaGalleryModal(state, mediaGalleryOpen.get(), () => mediaGalleryOpen.set(false)));
     render(previewSlot, MediaPreviewModal(previewMedia.get(), () => previewMedia.set(null)));
@@ -374,8 +398,13 @@ export function ChatView() {
       }
     });
 
-  connectMessagesSocket((message) => {
-    messages.update((state) => [...state, message]);
+  connectMessagesSocket((payload) => {
+    if (isDeleteSocketPayload(payload)) {
+      messages.update((state) => state.filter((message) => message._id !== payload.data.messageId));
+      return;
+    }
+
+    messages.update((state) => [...state, payload]);
   });
 
   return container;

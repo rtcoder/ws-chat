@@ -26,7 +26,8 @@ function renderMediaThumb(media: MediaItem) {
 function MessageBubble(
   message: Message,
   canDelete: boolean,
-  onPreviewMedia: (media: MediaItem) => void
+  onPreviewMedia: (media: MediaItem) => void,
+  onDeleteMessage: (messageId: string) => void
 ) {
   const mediaItems = getMessageMedia(message);
   let imagesDivClassName = 'images';
@@ -68,7 +69,15 @@ function MessageBubble(
 
   const options = createElement('div', {className: 'options'}, [
     icon('reply'),
-    canDelete ? icon('delete') : null
+    canDelete
+      ? createElement('span', {
+        className: 'material-icons icon',
+        text: 'delete',
+        on: {
+          click: () => onDeleteMessage(message._id)
+        }
+      })
+      : null
   ]);
 
   return createElement('div', {className: 'message', attrs: {'data-id': message._id}}, [content, options]);
@@ -77,7 +86,8 @@ function MessageBubble(
 export function MessageList(
   messages: Message[],
   authId: string,
-  onPreviewMedia: (media: MediaItem) => void
+  onPreviewMedia: (media: MediaItem) => void,
+  onDeleteMessage: (messageId: string) => void
 ) {
   const container = createElement('div', {className: 'messages'});
   const groups = mapMessagesToGroups(messages);
@@ -94,7 +104,7 @@ export function MessageList(
       createElement('div', {className: 'user-group-content'}, [
         createElement('div', {className: 'user-name', text: group.author.first_name}),
         createElement('div', {className: 'group'}, group.messages.map((message) => (
-          MessageBubble(message, messageBelongsToLoggedUser, onPreviewMedia)
+          MessageBubble(message, messageBelongsToLoggedUser, onPreviewMedia, onDeleteMessage)
         )))
       ]),
       createElement('div', {className: 'user-icon'}, [userIcon])

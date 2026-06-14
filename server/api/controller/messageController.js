@@ -1,4 +1,6 @@
-const {createMessage, getLatestMessages, getMessageWithAuthor} = require("../../db/models/messageMethods");
+const path = require('path');
+const fs = require('fs/promises');
+const {createMessage, deleteMessage, getLatestMessages, getMessageWithAuthor} = require("../../db/models/messageMethods");
 const {sendMessageWS, decodeMessage} = require("../../ws/wsMethods");
 const {createImages} = require("../../db/models/imageMethods");
 
@@ -124,8 +126,54 @@ const postMessage = async (req, res, next) => {
   }
 };
 
+const deleteStoredFiles = async (mediaItems = []) => {
+  const filePaths = new Set(
+    mediaItems.flatMap((media) => [media.path, media.poster].filter(Boolean))
+  );
+
+  await Promise.all([...filePaths].map(async (storedPath) => {
+    const absolutePath = path.join(__dirname, '../../', storedPath);
+
+    try {
+      await fs.unlink(absolutePath);
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        throw error;
+      }
+    }
+  }));
+};
+
+const removeMessage = async (req, res) => {
+  try {
+    const result = await deleteMessage(req.params.id, req.user.user_id);
+
+    if (result.status === 'not_found') {
+      return res.status(404).json({message: 'Message not found'});
+    }
+
+    if (result.status === 'forbidden') {
+      return res.status(403).json({message: 'You can delete only your own messages'});
+    }
+
+    await deleteStoredFiles(result.mediaItems);
+    sendMessageWS({
+      type: 'message_delete',
+      data: {
+        messageId: result.messageId,
+      }
+    });
+
+    return res.status(204).send();
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send(err);
+  }
+};
+
 
 module.exports = {
   getMessage,
   postMessage,
+  removeMessage,
 };

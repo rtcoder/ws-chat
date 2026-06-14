@@ -46,6 +46,15 @@ export function postMessage(value: {text: string; media: MediaUpload[]; type: st
   });
 }
 
+export function deleteMessage(messageId: string) {
+  return fetchApi<void>(`${API_URL}/api/messages/${messageId}`, {
+    method: 'DELETE',
+    headers: {
+      'x-access-token': getAuthToken() || ''
+    }
+  });
+}
+
 export async function login(payload: {email: string; password: string}) {
   const result = await fetchApi<User & {token?: string}>(`${API_URL}/auth/login`, {
     method: 'POST',

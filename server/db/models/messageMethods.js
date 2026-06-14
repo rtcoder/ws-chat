@@ -1,7 +1,7 @@
 const {randomUUID} = require('crypto');
-const {asc, desc, eq, inArray} = require('drizzle-orm');
+const {and, asc, desc, eq, inArray, or} = require('drizzle-orm');
 const {db} = require('../db');
-const {messageReactions, messages, users} = require('../schema');
+const {images, messageReactions, messages, users} = require('../schema');
 
 const MESSAGE_TYPES = {
   MESSAGE: 'msg',
@@ -151,9 +151,47 @@ const getLatestMessages = async (limit = 30) => {
   return mapRowsToMessages(rows);
 };
 
+const deleteMessage = async (messageId, userId) => {
+  const existingMessage = await db.query.messages.findFirst({
+    where: eq(messages.id, messageId),
+  });
+
+  if (!existingMessage) {
+    return {status: 'not_found'};
+  }
+
+  if (existingMessage.authorId !== userId) {
+    return {status: 'forbidden'};
+  }
+
+  const mediaItems = normalizeMedia(existingMessage);
+  const filePaths = mediaItems.flatMap((media) => [media.path, media.poster].filter(Boolean));
+
+  if (filePaths.length) {
+    await db.delete(images)
+      .where(or(
+        inArray(images.path, filePaths),
+        inArray(images.posterPath, filePaths),
+      ));
+  }
+
+  await db.delete(messages)
+    .where(and(
+      eq(messages.id, messageId),
+      eq(messages.authorId, userId),
+    ));
+
+  return {
+    status: 'deleted',
+    messageId,
+    mediaItems,
+  };
+};
+
 module.exports = {
   MESSAGE_TYPES,
   createMessage,
+  deleteMessage,
   getLatestMessages,
   getMessageWithAuthor,
 };
