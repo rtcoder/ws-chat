@@ -1,4 +1,4 @@
-import {createDirectChat, deleteMessage, getChats, getMessages, getUsers, postMessage} from '../lib/api';
+import {createDirectChat, deleteMessage, getChats, getMessages, getUsers, postMessage, reactToMessage} from '../lib/api';
 import {getLoggedUser, logout} from '../lib/auth';
 import {getMessageMedia} from '../lib/messages';
 import {connectMessagesSocket} from '../lib/websocket';
@@ -17,6 +17,21 @@ function isDeleteSocketPayload(payload: unknown): payload is {type: 'message_del
     && typeof payload.data === 'object'
     && payload.data !== null
     && 'messageId' in payload.data;
+}
+
+function isReactionSocketPayload(payload: unknown): payload is {
+  type: 'message_reaction';
+  data: {messageId: string; chatId: string; reactions: Message['reactions']};
+} {
+  return typeof payload === 'object'
+    && payload !== null
+    && 'type' in payload
+    && payload.type === 'message_reaction'
+    && 'data' in payload
+    && typeof payload.data === 'object'
+    && payload.data !== null
+    && 'messageId' in payload.data
+    && 'reactions' in payload.data;
 }
 
 function getUniqueContacts(chats: ChatSummary[], authId: string) {
@@ -518,6 +533,19 @@ export function ChatView() {
         }
       });
   };
+  const updateMessageReactions = (messageId: string, reactions: Message['reactions']) => {
+    messages.update((state) => state.map((message) => (
+      message._id === messageId ? {...message, reactions} : message
+    )));
+  };
+  const handleReaction = (message: Message, reaction: string) => {
+    reactToMessage(message._id, reaction)
+      .then(({data, error}) => {
+        if (!error && data && typeof data === 'object' && 'reactions' in data) {
+          updateMessageReactions(message._id, data.reactions as Message['reactions']);
+        }
+      });
+  };
   const container = createElement('div', {className: 'chat-container'}, [
     createElement('div', {className: 'app-shell'}, [
       sidebarSlot,
@@ -563,7 +591,8 @@ export function ChatView() {
       user?._id || '',
       (media) => previewMedia.set(media),
       removeMessage,
-      (message) => replyToMessage.set(message)
+      (message) => replyToMessage.set(message),
+      handleReaction
     ));
     renderDetailsContent();
     render(modalSlot, MediaGalleryModal(state, mediaGalleryOpen.get(), () => mediaGalleryOpen.set(false)));
@@ -653,6 +682,13 @@ export function ChatView() {
   connectMessagesSocket((payload) => {
     if (isDeleteSocketPayload(payload)) {
       messages.update((state) => state.filter((message) => message._id !== payload.data.messageId));
+      return;
+    }
+
+    if (isReactionSocketPayload(payload)) {
+      if (!payload.data.chatId || payload.data.chatId === activeChatId.get()) {
+        updateMessageReactions(payload.data.messageId, payload.data.reactions);
+      }
       return;
     }
 

@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs/promises');
-const {createMessage, deleteMessage, getLatestMessages, getMessageWithAuthor} = require("../../db/models/messageMethods");
+const {createMessage, deleteMessage, getLatestMessages, getMessageWithAuthor, setMessageReaction} = require("../../db/models/messageMethods");
 const {sendMessageWS, decodeMessage} = require("../../ws/wsMethods");
 const {createImages} = require("../../db/models/imageMethods");
 const {getChatByIdForUser, getChatUserIds, getGeneralChatForUser} = require('../../db/models/chatMethods');
@@ -197,9 +197,46 @@ const removeMessage = async (req, res) => {
   }
 };
 
+const reactToMessage = async (req, res) => {
+  try {
+    const {type} = req.body;
+
+    if (!['👍', '❤️', '😂', '😮', '😢', '🔥'].includes(type)) {
+      return res.status(400).json({message: 'Unsupported reaction'});
+    }
+
+    const result = await setMessageReaction(req.params.id, req.user.user_id, type);
+
+    if (result.status === 'not_found') {
+      return res.status(404).json({message: 'Message not found'});
+    }
+
+    if (result.status === 'forbidden') {
+      return res.status(403).json({message: 'You cannot react in this chat'});
+    }
+
+    const recipientIds = await getChatUserIds(result.chatId);
+    const payload = {
+      type: 'message_reaction',
+      data: {
+        messageId: result.messageId,
+        chatId: result.chatId,
+        reactions: result.reactions,
+      }
+    };
+
+    sendMessageWS(payload, recipientIds);
+    return res.json(payload.data);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send(err);
+  }
+};
+
 
 module.exports = {
   getMessage,
   postMessage,
+  reactToMessage,
   removeMessage,
 };

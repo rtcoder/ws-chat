@@ -2,7 +2,7 @@ const {randomUUID} = require('crypto');
 const {and, asc, desc, eq, inArray, or} = require('drizzle-orm');
 const {db} = require('../db');
 const {images, messageReactions, messages, users} = require('../schema');
-const {touchChat} = require('./chatMethods');
+const {isUserChatMember, touchChat} = require('./chatMethods');
 
 const MESSAGE_TYPES = {
   MESSAGE: 'msg',
@@ -198,10 +198,61 @@ const deleteMessage = async (messageId, userId) => {
   };
 };
 
+const getMessageReactions = async (messageId) => {
+  const rows = await db
+    .select({
+      user: messageReactions.userId,
+      type: messageReactions.type,
+    })
+    .from(messageReactions)
+    .where(eq(messageReactions.messageId, messageId));
+
+  return rows;
+};
+
+const setMessageReaction = async (messageId, userId, type) => {
+  const existingMessage = await db.query.messages.findFirst({
+    where: eq(messages.id, messageId),
+  });
+
+  if (!existingMessage) {
+    return {status: 'not_found'};
+  }
+
+  if (!(await isUserChatMember(existingMessage.chatId, userId))) {
+    return {status: 'forbidden'};
+  }
+
+  const existingReactions = await getMessageReactions(messageId);
+  const currentUserReaction = existingReactions.find((reaction) => reaction.user === userId);
+
+  await db.delete(messageReactions)
+    .where(and(
+      eq(messageReactions.messageId, messageId),
+      eq(messageReactions.userId, userId),
+    ));
+
+  if (currentUserReaction?.type !== type) {
+    await db.insert(messageReactions).values({
+      messageId,
+      userId,
+      type,
+    });
+  }
+
+  return {
+    status: 'updated',
+    messageId,
+    chatId: existingMessage.chatId,
+    reactions: await getMessageReactions(messageId),
+  };
+};
+
 module.exports = {
   MESSAGE_TYPES,
   createMessage,
   deleteMessage,
   getLatestMessages,
   getMessageWithAuthor,
+  setMessageReaction,
 };

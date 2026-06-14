@@ -2,6 +2,8 @@ import {audio, createElement, icon, image, video} from '../lib/dom';
 import {belongsToUser, getAttachmentIcon, getMessageMedia, mapMessagesToGroups} from '../lib/messages';
 import {MediaItem, MediaKind, Message} from '../types';
 
+const MESSAGE_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
+
 function renderMediaThumb(media: MediaItem) {
   return media.kind === MediaKind.VIDEO
     ? createElement('div', {className: 'media-tile media-video'}, [
@@ -66,6 +68,47 @@ function getReplyText(message?: Message | null) {
   }
 
   return `${mediaItems.length} attachments`;
+}
+
+function getReactionSummary(message: Message) {
+  const summary = new Map<string, {count: number; reactedByMe: boolean}>();
+
+  (message.reactions || []).forEach((reaction) => {
+    const current = summary.get(reaction.type) || {count: 0, reactedByMe: false};
+    current.count += 1;
+    summary.set(reaction.type, current);
+  });
+
+  return summary;
+}
+
+function ReactionSummary(message: Message, authId: string, onReactMessage: (message: Message, reaction: string) => void) {
+  const summary = getReactionSummary(message);
+
+  (message.reactions || []).forEach((reaction) => {
+    const current = summary.get(reaction.type);
+    if (current) {
+      current.reactedByMe = current.reactedByMe || reaction.user === authId;
+    }
+  });
+
+  if (!summary.size) {
+    return null;
+  }
+
+  return createElement('div', {className: 'reaction-summary'}, [...summary.entries()].map(([reaction, item]) => (
+    createElement('button', {
+      type: 'button',
+      className: `reaction-pill ${item.reactedByMe ? 'active' : ''}`.trim(),
+      title: `React ${reaction}`,
+      on: {
+        click: () => onReactMessage(message, reaction)
+      }
+    }, [
+      createElement('span', {text: reaction}),
+      createElement('span', {className: 'reaction-count', text: String(item.count)})
+    ])
+  )));
 }
 
 function AudioAttachment(media: MediaItem) {
@@ -289,9 +332,11 @@ function MessageBubble(
   message: Message,
   replyMessage: Message | null,
   canDelete: boolean,
+  authId: string,
   onPreviewMedia: (media: MediaItem) => void,
   onDeleteMessage: (messageId: string) => void,
-  onReplyMessage: (message: Message) => void
+  onReplyMessage: (message: Message) => void,
+  onReactMessage: (message: Message, reaction: string) => void
 ) {
   const mediaItems = getMessageMedia(message);
   let imagesDivClassName = 'images';
@@ -357,26 +402,80 @@ function MessageBubble(
     ))));
   }
 
+  let closeReactionPicker: (event?: Event) => void = () => {};
+  const reactionPicker = createElement('div', {className: 'reaction-picker'}, MESSAGE_REACTIONS.map((reaction) => (
+    createElement('button', {
+      type: 'button',
+      className: 'reaction-option',
+      title: `React ${reaction}`,
+      on: {
+        click: () => {
+          onReactMessage(message, reaction);
+          closeReactionPicker();
+        }
+      }
+    }, [reaction])
+  )));
+  const reactionToggle = createElement('button', {
+    className: 'message-option-button',
+    type: 'button',
+    title: 'Add reaction',
+    on: {
+      click: (event) => {
+        event.stopPropagation();
+        reactionPicker.classList.toggle('open');
+
+        if (reactionPicker.classList.contains('open')) {
+          document.addEventListener('pointerdown', closeReactionPicker);
+        } else {
+          document.removeEventListener('pointerdown', closeReactionPicker);
+        }
+      }
+    }
+  }, [icon('add_reaction')]);
+  const reactionsContainer = createElement('div', {className: 'reactions-container'}, [
+    reactionToggle,
+    reactionPicker,
+  ]);
   const options = createElement('div', {className: 'options'}, [
-    createElement('span', {
-      className: 'material-icons icon',
-      text: 'reply',
+    reactionsContainer,
+    createElement('button', {
+      className: 'message-option-button',
+      type: 'button',
+      title: 'Reply',
       on: {
         click: () => onReplyMessage(message)
       }
-    }),
+    }, [icon('reply')]),
     canDelete
-      ? createElement('span', {
-        className: 'material-icons icon',
-        text: 'delete',
+      ? createElement('button', {
+        className: 'message-option-button',
+        type: 'button',
+        title: 'Delete',
         on: {
           click: () => onDeleteMessage(message._id)
         }
-      })
+      }, [icon('delete')])
       : null
   ]);
+  closeReactionPicker = (event?: Event) => {
+    if (event?.target instanceof Node && options.contains(event.target)) {
+      return;
+    }
 
-  return createElement('div', {className: 'message', attrs: {'data-id': message._id}}, [content, options]);
+    reactionPicker.classList.remove('open');
+    document.removeEventListener('pointerdown', closeReactionPicker);
+  };
+
+  const reactionSummary = ReactionSummary(message, authId, onReactMessage);
+
+  return createElement('div', {className: 'message', attrs: {'data-id': message._id}}, [
+    createElement('div', {className: 'message-stack'}, [
+      content,
+      reactionSummary
+    ]),
+    options
+  ]);
 }
 
 export function MessageList(
@@ -384,7 +483,8 @@ export function MessageList(
   authId: string,
   onPreviewMedia: (media: MediaItem) => void,
   onDeleteMessage: (messageId: string) => void,
-  onReplyMessage: (message: Message) => void
+  onReplyMessage: (message: Message) => void,
+  onReactMessage: (message: Message, reaction: string) => void
 ) {
   const container = createElement('div', {className: 'messages'});
   const groups = mapMessagesToGroups(messages);
@@ -407,9 +507,11 @@ export function MessageList(
             message,
             message.replyTo ? messagesById.get(message.replyTo) || null : null,
             messageBelongsToLoggedUser,
+            authId,
             onPreviewMedia,
             onDeleteMessage,
-            onReplyMessage
+            onReplyMessage,
+            onReactMessage
           )
         )))
       ]),

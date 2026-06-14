@@ -83,6 +83,16 @@ export function deleteMessage(messageId: string) {
   });
 }
 
+export function reactToMessage(messageId: string, type: string) {
+  return fetchApi(`${API_URL}/api/messages/${messageId}/reactions`, {
+    method: 'POST',
+    body: JSON.stringify({type}),
+    headers: {
+      'x-access-token': getAuthToken() || ''
+    }
+  });
+}
+
 export async function login(payload: {email: string; password: string}) {
   const result = await fetchApi<User & {token?: string}>(`${API_URL}/auth/login`, {
     method: 'POST',

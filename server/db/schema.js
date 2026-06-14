@@ -62,7 +62,7 @@ const messageReactions = pgTable('message_reactions', {
   type: text('type').notNull(),
   createdAt: timestamp('created_at', {withTimezone: true}).notNull().defaultNow(),
 }, (table) => [
-  primaryKey({columns: [table.messageId, table.userId, table.type]}),
+  primaryKey({columns: [table.messageId, table.userId]}),
 ]);
 
 const images = pgTable('images', {

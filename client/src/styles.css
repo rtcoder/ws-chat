@@ -461,6 +461,16 @@ textarea::placeholder {
   flex-direction: row-reverse;
 }
 
+.message-stack {
+  display: grid;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.right .message-stack {
+  justify-items: end;
+}
+
 .message .content-message {
   display: grid;
   gap: 6px;
@@ -542,25 +552,130 @@ textarea::placeholder {
 }
 
 .message .options {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 4px;
   width: 72px;
+  flex: 0 0 72px;
   opacity: 0;
   visibility: hidden;
+  transition: opacity 120ms ease;
 }
 
-.message:hover .options {
+.message:hover .options,
+.message:focus-within .options {
   opacity: 1;
   visibility: visible;
 }
 
-.message .options > .icon {
+.message .reactions-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reaction-picker {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  z-index: 20;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: rgba(10, 17, 27, 0.94);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px) scale(0.98);
+  transform-origin: bottom center;
+  transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
+  visibility: hidden;
+}
+
+.left .reaction-picker {
+  left: 8px;
+}
+
+.right .reaction-picker {
+  right: 8px;
+}
+
+.reaction-picker.open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+  visibility: visible;
+}
+
+.reaction-option {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.reaction-option:hover {
+  background: var(--accent-soft);
+}
+
+.reaction-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.78);
+  color: var(--muted-strong);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.reaction-pill.active {
+  border-color: rgba(56, 189, 248, 0.38);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.reaction-count {
+  font-weight: 700;
+}
+
+.message-option-button {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 28px;
+  border: 0;
+  background: transparent;
   color: var(--muted);
   cursor: pointer;
+}
+
+.message-option-button .icon,
+.message .options > .icon {
+  color: var(--muted);
   font-size: 19px;
 }
 
+.message-option-button:hover .icon,
 .message .options > .icon:hover {
   color: var(--accent);
 }

@@ -72,11 +72,17 @@ export type Message = {
   images: string[];
   type: string;
   author: User;
+  reactions?: MessageReaction[];
   isOnlyEmoji?: boolean;
   replyTo?: string | null;
   chatId?: string | null;
   createdAt?: string;
   updatedAt?: string;
+};
+
+export type MessageReaction = {
+  user: string;
+  type: string;
 };
 
 export type MessageDelete = {
@@ -86,9 +92,19 @@ export type MessageDelete = {
   };
 };
 
+export type MessageReactionPayload = {
+  type: 'message_reaction';
+  data: {
+    messageId: string;
+    chatId: string;
+    reactions: MessageReaction[];
+  };
+};
+
 export type SocketPayload =
   | Message
-  | MessageDelete;
+  | MessageDelete
+  | MessageReactionPayload;
 
 export type MessageGroup = {
   author: User;
