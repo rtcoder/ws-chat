@@ -48,6 +48,7 @@ function formatDuration(duration?: number | null) {
 
 function AudioAttachment(media: MediaItem) {
   const audioNode = audio(media.path, 'attachment-audio');
+  const attachment = createElement('div', {className: 'audio-attachment'});
   const progress = createElement('div', {className: 'audio-waveform-progress'});
   const durationLabel = createElement('span', {
     className: 'audio-duration',
@@ -58,30 +59,72 @@ function AudioAttachment(media: MediaItem) {
     className: 'audio-toggle',
     title: 'Play audio'
   }, [icon('play_arrow')]);
+  const waveformValues = media.waveform?.length
+    ? media.waveform
+    : Array.from({length: 72}, (_, index) => (index % 12 === 0 ? 0.7 : 0.08));
+  const liveBars = waveformValues.map(() => createElement('span', {className: 'audio-waveform-bar'}));
   const waveform = createElement('div', {className: 'audio-waveform'}, [
     media.poster
       ? image(media.poster, 'audio-waveform-image', `${media.name || 'Audio'} waveform`)
       : createElement('div', {className: 'audio-waveform-fallback'}, [icon('graphic_eq')]),
-    progress
+    createElement('div', {className: 'audio-waveform-glow'}),
+    progress,
+    createElement('div', {className: 'audio-waveform-live'}, liveBars)
   ]);
+  let animationFrame = 0;
+
+  const updateWaveformBars = () => {
+    const baseOffset = audioNode.duration
+      ? Math.floor((audioNode.currentTime / audioNode.duration) * waveformValues.length * 3)
+      : 0;
+    const time = performance.now() / 180;
+
+    liveBars.forEach((bar, index) => {
+      const sample = waveformValues[(index + baseOffset) % waveformValues.length] || 0.05;
+      const motion = 0.82 + (Math.sin(time + (index * 0.42)) * 0.18);
+      const height = Math.max(10, Math.min(100, (sample * motion) * 100));
+      bar.style.height = `${height}%`;
+      bar.style.opacity = `${0.42 + (sample * 0.5)}`;
+    });
+  };
+
+  const tickWaveform = () => {
+    updateWaveformBars();
+    if (!audioNode.paused) {
+      animationFrame = window.requestAnimationFrame(tickWaveform);
+    }
+  };
+
+  if (media.poster) {
+    progress.append(
+      image(media.poster, 'audio-waveform-image active', `${media.name || 'Audio'} waveform active`),
+      createElement('div', {className: 'audio-waveform-shimmer'})
+    );
+  }
 
   const syncProgress = () => {
     const ratio = audioNode.duration ? audioNode.currentTime / audioNode.duration : 0;
     progress.style.width = `${Math.max(0, Math.min(100, ratio * 100))}%`;
     durationLabel.textContent = formatDuration(audioNode.duration - audioNode.currentTime || audioNode.duration || media.duration);
   };
+  updateWaveformBars();
 
   playButton.addEventListener('click', () => {
     if (audioNode.paused) {
       void audioNode.play();
       playButton.replaceChildren(icon('pause'));
       playButton.title = 'Pause audio';
+      attachment.classList.add('is-playing');
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(tickWaveform);
       return;
     }
 
     audioNode.pause();
     playButton.replaceChildren(icon('play_arrow'));
     playButton.title = 'Play audio';
+      attachment.classList.remove('is-playing');
+    window.cancelAnimationFrame(animationFrame);
   });
 
   audioNode.addEventListener('timeupdate', syncProgress);
@@ -90,6 +133,9 @@ function AudioAttachment(media: MediaItem) {
     progress.style.width = '100%';
     playButton.replaceChildren(icon('play_arrow'));
     playButton.title = 'Play audio';
+    attachment.classList.remove('is-playing');
+    window.cancelAnimationFrame(animationFrame);
+    updateWaveformBars();
   });
   audioNode.addEventListener('pause', () => {
     if (audioNode.ended) {
@@ -98,10 +144,16 @@ function AudioAttachment(media: MediaItem) {
 
     playButton.replaceChildren(icon('play_arrow'));
     playButton.title = 'Play audio';
+    attachment.classList.remove('is-playing');
+    window.cancelAnimationFrame(animationFrame);
+    updateWaveformBars();
   });
   audioNode.addEventListener('play', () => {
     playButton.replaceChildren(icon('pause'));
     playButton.title = 'Pause audio';
+    attachment.classList.add('is-playing');
+    window.cancelAnimationFrame(animationFrame);
+    animationFrame = window.requestAnimationFrame(tickWaveform);
   });
 
   waveform.addEventListener('click', (event) => {
@@ -114,7 +166,7 @@ function AudioAttachment(media: MediaItem) {
     }
   });
 
-  return createElement('div', {className: 'audio-attachment'}, [
+  attachment.append(
     playButton,
     createElement('div', {className: 'audio-body'}, [
       waveform,
@@ -127,7 +179,9 @@ function AudioAttachment(media: MediaItem) {
       ])
     ]),
     audioNode
-  ]);
+  );
+
+  return attachment;
 }
 
 function MessageBubble(

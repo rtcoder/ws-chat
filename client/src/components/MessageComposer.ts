@@ -126,7 +126,7 @@ export function MessageComposer(onSendMessage: SendMessage) {
     return BrowserAudioContext ? new BrowserAudioContext() : null;
   };
 
-  const sampleWaveform = (channelData: Float32Array, sampleCount = 56) => {
+  const sampleWaveform = (channelData: Float32Array, sampleCount = 120) => {
     const blockSize = Math.floor(channelData.length / sampleCount) || 1;
 
     return Array.from({length: sampleCount}, (_, index) => {
@@ -135,16 +135,23 @@ export function MessageComposer(onSendMessage: SendMessage) {
       let peak = 0;
 
       for (let cursor = start; cursor < end; cursor += 1) {
-        peak = Math.max(peak, Math.abs(channelData[cursor] || 0));
+        const sample = channelData[cursor] || 0;
+        peak = Math.max(peak, Math.abs(sample));
       }
 
-      return Math.min(1, peak || 0.04);
+      return Math.max(0.035, Math.min(1, peak || 0.035));
     });
   };
 
+  const smoothWaveform = (waveform: number[]) => waveform.map((value, index, values) => {
+    const left = values[index - 1] ?? value;
+    const right = values[index + 1] ?? value;
+    return Math.max(0.03, Math.min(1, ((left * 0.2) + (value * 0.6) + (right * 0.2))));
+  });
+
   const renderAudioPoster = (waveform: number[]) => {
     const width = 400;
-    const height = 100;
+    const height = 88;
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
@@ -154,16 +161,20 @@ export function MessageComposer(onSendMessage: SendMessage) {
       return null;
     }
 
-    context.fillStyle = '#38bdf8';
-    const gap = 3;
-    const innerWidth = width - 40;
-    const barWidth = Math.max(3, Math.floor((innerWidth - (gap * (waveform.length - 1))) / waveform.length));
+    const values = smoothWaveform(waveform);
+    const midY = height / 2;
+    const maxAmplitude = height * 0.38;
+    const lineWidth = width / values.length;
 
-    waveform.forEach((value, index) => {
-      const barHeight = Math.max(10, value * 54);
-      const x = 20 + (index * (barWidth + gap));
-      const y = Math.round((height - barHeight) / 2);
-      context.fillRect(x, y, barWidth, barHeight);
+    context.clearRect(0, 0, width, height);
+    values.forEach((value, index) => {
+      const barHeight = Math.max(2, value * maxAmplitude);
+      const x = index * lineWidth;
+      const y = midY - barHeight;
+      const hue = 196 + ((index / Math.max(1, values.length - 1)) * 34);
+
+      context.fillStyle = `hsla(${hue}, 96%, 66%, 0.92)`;
+      context.fillRect(x, y, Math.max(1, lineWidth - 0.6), barHeight * 2);
     });
 
     return canvas.toDataURL('image/png');
