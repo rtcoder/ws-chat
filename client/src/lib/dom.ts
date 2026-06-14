@@ -66,6 +66,7 @@ export function video(src: string, className = '', controls = false) {
 
   return createElement('video', {
     className,
+    crossOrigin: 'anonymous',
     src: normalizedSrc,
     controls,
     playsInline: true,
@@ -78,6 +79,7 @@ export function audio(src: string, className = '', controls = false) {
 
   return createElement('audio', {
     className,
+    crossOrigin: 'anonymous',
     src: normalizedSrc,
     controls,
     preload: 'metadata'

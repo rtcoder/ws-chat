@@ -49,7 +49,6 @@ function formatDuration(duration?: number | null) {
 function AudioAttachment(media: MediaItem) {
   const audioNode = audio(media.path, 'attachment-audio');
   const attachment = createElement('div', {className: 'audio-attachment'});
-  const progress = createElement('div', {className: 'audio-waveform-progress'});
   const durationLabel = createElement('span', {
     className: 'audio-duration',
     text: formatDuration(media.duration)
@@ -59,83 +58,158 @@ function AudioAttachment(media: MediaItem) {
     className: 'audio-toggle',
     title: 'Play audio'
   }, [icon('play_arrow')]);
-  const waveformValues = media.waveform?.length
-    ? media.waveform
-    : Array.from({length: 72}, (_, index) => (index % 12 === 0 ? 0.7 : 0.08));
-  const liveBars = waveformValues.map(() => createElement('span', {className: 'audio-waveform-bar'}));
+  const liveCanvas = createElement('canvas', {className: 'audio-waveform-canvas'});
   const waveform = createElement('div', {className: 'audio-waveform'}, [
     media.poster
       ? image(media.poster, 'audio-waveform-image', `${media.name || 'Audio'} waveform`)
       : createElement('div', {className: 'audio-waveform-fallback'}, [icon('graphic_eq')]),
-    createElement('div', {className: 'audio-waveform-glow'}),
-    progress,
-    createElement('div', {className: 'audio-waveform-live'}, liveBars)
+    liveCanvas
   ]);
   let animationFrame = 0;
+  let audioContext: AudioContext | null = null;
+  let analyser: AnalyserNode | null = null;
+  let sourceNode: MediaElementAudioSourceNode | null = null;
+  let timeDomainData: Uint8Array<ArrayBuffer> | null = null;
+  let liveReady = false;
+  let liveFailed = false;
 
-  const updateWaveformBars = () => {
-    const baseOffset = audioNode.duration
-      ? Math.floor((audioNode.currentTime / audioNode.duration) * waveformValues.length * 3)
-      : 0;
-    const time = performance.now() / 180;
+  const ensureLiveWaveform = () => {
+    if (liveFailed) {
+      return;
+    }
 
-    liveBars.forEach((bar, index) => {
-      const sample = waveformValues[(index + baseOffset) % waveformValues.length] || 0.05;
-      const motion = 0.82 + (Math.sin(time + (index * 0.42)) * 0.18);
-      const height = Math.max(10, Math.min(100, (sample * motion) * 100));
-      bar.style.height = `${height}%`;
-      bar.style.opacity = `${0.42 + (sample * 0.5)}`;
-    });
+    if (liveReady && audioContext && analyser && timeDomainData) {
+      if (audioContext.state === 'suspended') {
+        void audioContext.resume();
+      }
+      return;
+    }
+
+    const BrowserAudioContext = window.AudioContext || (window as typeof window & {
+      webkitAudioContext?: typeof AudioContext
+    }).webkitAudioContext;
+
+    if (!BrowserAudioContext) {
+      return;
+    }
+
+    try {
+      audioContext = new BrowserAudioContext();
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.82;
+      timeDomainData = new Uint8Array(new ArrayBuffer(analyser.fftSize));
+      sourceNode = audioContext.createMediaElementSource(audioNode);
+      sourceNode.connect(analyser);
+      analyser.connect(audioContext.destination);
+      liveReady = true;
+    } catch (error) {
+      console.error('Live waveform init failed', error);
+      liveFailed = true;
+      attachment.classList.add('live-waveform-disabled');
+    }
+  };
+
+  const drawLiveWaveform = () => {
+    if (!analyser || !timeDomainData) {
+      return;
+    }
+    const data = timeDomainData as Uint8Array;
+
+    const context = liveCanvas.getContext('2d');
+
+    if (!context) {
+      return;
+    }
+
+    const rect = waveform.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const width = Math.max(1, Math.round(rect.width * dpr));
+    const height = Math.max(1, Math.round(rect.height * dpr));
+
+    if (liveCanvas.width !== width || liveCanvas.height !== height) {
+      liveCanvas.width = width;
+      liveCanvas.height = height;
+    }
+
+    analyser.getByteTimeDomainData(data as unknown as Uint8Array<ArrayBuffer>);
+    context.clearRect(0, 0, width, height);
+    context.scale(1, 1);
+
+    const midY = height / 2;
+    const progressRatio = audioNode.duration ? audioNode.currentTime / audioNode.duration : 0;
+    const playedX = width * progressRatio;
+
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+
+    const drawPath = (strokeStyle: string, lineWidth: number, clipWidth = width) => {
+      context.save();
+      context.beginPath();
+      context.rect(0, 0, clipWidth, height);
+      context.clip();
+      context.beginPath();
+
+      for (let index = 0; index < data.length; index += 1) {
+        const sample = (data[index] - 128) / 128;
+        const x = (index / (data.length - 1)) * width;
+        const y = midY + (sample * (height * 0.34));
+
+        if (index === 0) {
+          context.moveTo(x, y);
+          continue;
+        }
+
+        context.lineTo(x, y);
+      }
+
+      context.strokeStyle = strokeStyle;
+      context.lineWidth = lineWidth;
+      context.stroke();
+      context.restore();
+    };
+
+    drawPath('rgba(148, 163, 184, 0.35)', 4);
+    drawPath('#94a3b8', 1.5);
+    drawPath('rgba(34, 211, 238, 0.24)', 6, playedX);
+    drawPath('#22d3ee', 2, playedX);
   };
 
   const tickWaveform = () => {
-    updateWaveformBars();
+    drawLiveWaveform();
     if (!audioNode.paused) {
       animationFrame = window.requestAnimationFrame(tickWaveform);
     }
   };
 
-  if (media.poster) {
-    progress.append(
-      image(media.poster, 'audio-waveform-image active', `${media.name || 'Audio'} waveform active`),
-      createElement('div', {className: 'audio-waveform-shimmer'})
-    );
-  }
-
   const syncProgress = () => {
-    const ratio = audioNode.duration ? audioNode.currentTime / audioNode.duration : 0;
-    progress.style.width = `${Math.max(0, Math.min(100, ratio * 100))}%`;
     durationLabel.textContent = formatDuration(audioNode.duration - audioNode.currentTime || audioNode.duration || media.duration);
   };
-  updateWaveformBars();
 
   playButton.addEventListener('click', () => {
     if (audioNode.paused) {
-      void audioNode.play();
-      playButton.replaceChildren(icon('pause'));
-      playButton.title = 'Pause audio';
-      attachment.classList.add('is-playing');
-      window.cancelAnimationFrame(animationFrame);
-      animationFrame = window.requestAnimationFrame(tickWaveform);
+      const playResult = audioNode.play();
+
+      if (playResult && typeof playResult.catch === 'function') {
+        playResult.catch(() => {
+          playButton.replaceChildren(icon('play_arrow'));
+          playButton.title = 'Play audio';
+          attachment.classList.remove('is-playing');
+        });
+      }
       return;
     }
 
     audioNode.pause();
-    playButton.replaceChildren(icon('play_arrow'));
-    playButton.title = 'Play audio';
-      attachment.classList.remove('is-playing');
-    window.cancelAnimationFrame(animationFrame);
   });
 
   audioNode.addEventListener('timeupdate', syncProgress);
   audioNode.addEventListener('loadedmetadata', syncProgress);
   audioNode.addEventListener('ended', () => {
-    progress.style.width = '100%';
     playButton.replaceChildren(icon('play_arrow'));
     playButton.title = 'Play audio';
     attachment.classList.remove('is-playing');
     window.cancelAnimationFrame(animationFrame);
-    updateWaveformBars();
   });
   audioNode.addEventListener('pause', () => {
     if (audioNode.ended) {
@@ -146,14 +220,16 @@ function AudioAttachment(media: MediaItem) {
     playButton.title = 'Play audio';
     attachment.classList.remove('is-playing');
     window.cancelAnimationFrame(animationFrame);
-    updateWaveformBars();
   });
   audioNode.addEventListener('play', () => {
+    ensureLiveWaveform();
     playButton.replaceChildren(icon('pause'));
     playButton.title = 'Pause audio';
     attachment.classList.add('is-playing');
-    window.cancelAnimationFrame(animationFrame);
-    animationFrame = window.requestAnimationFrame(tickWaveform);
+    if (!liveFailed) {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(tickWaveform);
+    }
   });
 
   waveform.addEventListener('click', (event) => {
@@ -163,6 +239,9 @@ function AudioAttachment(media: MediaItem) {
     if (audioNode.duration) {
       audioNode.currentTime = audioNode.duration * ratio;
       syncProgress();
+      if (!audioNode.paused) {
+        drawLiveWaveform();
+      }
     }
   });
 
