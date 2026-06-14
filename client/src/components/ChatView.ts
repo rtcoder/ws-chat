@@ -114,11 +114,14 @@ function Sidebar(messages: Message[], authId: string) {
 
 function getMediaEntries(messages: Message[]) {
   return messages
-    .flatMap((message) => getMessageMedia(message).map((media, index) => ({
+    .flatMap((message) => getMessageMedia(message)
+      .filter((media) => media.kind === 'image' || media.kind === 'video')
+      .map((media, index) => ({
       id: `${message._id}-${index}`,
       src: media.path,
       thumb: media.kind === 'video' ? media.poster || media.path : media.path,
       kind: media.kind,
+      name: media.name || media.path.split('/').pop() || 'Media',
       author: message.author.first_name,
       createdAt: message.createdAt,
       caption: message.text,
@@ -245,7 +248,7 @@ function MediaGalleryModal(
           createElement('div', {className: 'media-meta'}, [
             createElement('span', {className: 'media-author', text: entry.author}),
             createElement('span', {className: 'media-date', text: formatDateLabel(entry.createdAt)}),
-            createElement('span', {className: 'media-caption', text: entry.caption || 'Image upload'})
+            createElement('span', {className: 'media-caption', text: entry.caption || entry.name})
           ])
         ]))
         : [
@@ -267,6 +270,12 @@ function MediaPreviewModal(
   }
 
   const normalizedSrc = resolveMediaSrc(media.path);
+
+  if (media.kind === 'file') {
+    window.open(normalizedSrc, '_blank', 'noopener,noreferrer');
+    queueMicrotask(onClose);
+    return createElement('div');
+  }
 
   return createElement('div', {
     className: 'media-preview-backdrop',

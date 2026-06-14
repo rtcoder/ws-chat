@@ -1,4 +1,4 @@
-import {belongsToUser, getMessageMedia, mapMessagesToGroups} from '../lib/messages';
+import {belongsToUser, getAttachmentIcon, getMessageMedia, mapMessagesToGroups} from '../lib/messages';
 import {createElement, icon, image, video} from '../lib/dom';
 import type {MediaItem, Message} from '../types';
 
@@ -8,7 +8,19 @@ function renderMediaThumb(media: MediaItem) {
       media.poster ? image(media.poster, 'message-video-thumb') : video(media.path, 'message-video-thumb'),
       createElement('span', {className: 'material-icons media-play-icon', text: 'play_circle'})
     ])
-    : createElement('div', {className: 'media-tile'}, [image(media.path)]);
+    : media.kind === 'image'
+      ? createElement('div', {className: 'media-tile'}, [image(media.path)])
+      : createElement('div', {className: 'media-tile media-file'}, [
+        media.poster
+          ? image(media.poster, 'message-file-thumb')
+          : createElement('div', {className: 'file-fallback'}, [
+            icon(getAttachmentIcon(media), 'file-fallback-icon'),
+            createElement('span', {
+              className: 'file-fallback-ext',
+              text: media.name?.split('.').pop()?.toUpperCase() || 'FILE'
+            })
+          ])
+      ]);
 }
 
 function MessageBubble(
@@ -37,14 +49,20 @@ function MessageBubble(
 
   if (mediaItems.length) {
     content.append(createElement('div', {className: imagesDivClassName}, mediaItems.map((media) => (
-      createElement('button', {
-        className: 'image-handler',
-        type: 'button',
-        title: 'Preview media',
-        on: {
-          click: () => onPreviewMedia(media)
-        }
-      }, [renderMediaThumb(media)])
+      createElement('div', {className: 'attachment-item'}, [
+        createElement('button', {
+          className: 'image-handler',
+          type: 'button',
+          title: media.kind === 'file' ? 'Open file' : 'Preview media',
+          on: {
+            click: () => onPreviewMedia(media)
+          }
+        }, [renderMediaThumb(media)]),
+        createElement('span', {
+          className: 'attachment-name',
+          text: media.name || media.path.split('/').pop() || 'Attachment'
+        })
+      ])
     ))));
   }
 

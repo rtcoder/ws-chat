@@ -67,6 +67,8 @@ const images = pgTable('images', {
   id: uuid('id').primaryKey(),
   path: text('path').notNull(),
   type: text('type').notNull().default('image'),
+  fileName: text('file_name'),
+  mimeType: text('mime_type'),
   posterPath: text('poster_path'),
   authorId: uuid('author_id').references(() => users.id, {onDelete: 'set null'}),
   chatId: uuid('chat_id').references(() => chats.id, {onDelete: 'cascade'}),

@@ -1,0 +1,5 @@
+ALTER TABLE images
+  ADD COLUMN IF NOT EXISTS file_name TEXT;
+
+ALTER TABLE images
+  ADD COLUMN IF NOT EXISTS mime_type TEXT;

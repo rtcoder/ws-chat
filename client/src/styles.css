@@ -488,14 +488,20 @@ textarea::placeholder {
 .images {
   display: flex;
   flex-wrap: wrap;
+  gap: 6px;
   max-width: 450px;
   overflow: hidden;
-  border-radius: 8px;
 }
 
-.images > .image-handler {
-  width: calc(100% / 3);
-  padding: 2px;
+.attachment-item {
+  display: grid;
+  gap: 6px;
+  width: calc((100% - 12px) / 3);
+}
+
+.images > .attachment-item > .image-handler {
+  width: 100%;
+  padding: 0;
   border: 0;
   background: transparent;
   overflow: hidden;
@@ -503,7 +509,7 @@ textarea::placeholder {
   cursor: pointer;
 }
 
-.images > .image-handler:hover {
+.images > .attachment-item > .image-handler:hover {
   filter: brightness(90%);
 }
 
@@ -527,22 +533,32 @@ textarea::placeholder {
   object-fit: cover;
 }
 
-.images.i1 > .image-handler {
+.images.i1 > .attachment-item {
   width: 150px;
 }
 
-.images.i2 > .image-handler,
-.images.i4 > .image-handler {
-  width: 50%;
+.images.i2 > .attachment-item,
+.images.i4 > .attachment-item {
+  width: calc((100% - 6px) / 2);
 }
 
 .media-video {
   background: #020617;
 }
 
+.media-file {
+  background: #0f172a;
+}
+
 .message-video-thumb {
   display: block;
   pointer-events: none;
+}
+
+.message-file-thumb {
+  display: block;
+  border-radius: 8px;
+  object-fit: cover;
 }
 
 .media-play-icon {
@@ -552,6 +568,43 @@ textarea::placeholder {
   color: rgba(248, 250, 252, 0.96);
   text-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
   font-size: 28px;
+}
+
+.file-fallback,
+.composer-file-fallback {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #1f2937, #111827);
+  color: var(--text);
+  text-align: center;
+}
+
+.file-fallback-icon,
+.composer-file-icon {
+  font-size: 30px;
+}
+
+.file-fallback-ext,
+.composer-file-ext {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.attachment-name {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--muted-strong);
+  font-size: 12px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .composer-panel {
@@ -634,18 +687,20 @@ textarea {
   flex-direction: row;
   gap: 10px;
   padding: 10px 10px 0;
+  overflow-x: auto;
 }
 
-.files-preview > div {
+.composer-preview-item {
   position: relative;
-  width: 52px;
-  height: 52px;
+  display: grid;
+  gap: 6px;
+  width: 76px;
 }
 
 .composer-media-preview,
 .composer-preview-image,
 .composer-preview-video {
-  width: 52px;
+  width: 76px;
   height: 52px;
 }
 
@@ -666,6 +721,10 @@ textarea {
   background: #020617;
 }
 
+.composer-file-preview {
+  background: #0f172a;
+}
+
 .composer-preview-play {
   position: absolute;
   right: 4px;
@@ -674,6 +733,16 @@ textarea {
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
   font-size: 20px;
   pointer-events: none;
+}
+
+.composer-preview-name {
+  display: block;
+  overflow: hidden;
+  color: var(--muted-strong);
+  font-size: 11px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .files-preview .icon.delete-image {
@@ -694,7 +763,7 @@ textarea {
 }
 
 .files-preview img {
-  width: 52px;
+  width: 76px;
   height: 52px;
   border: 1px solid var(--line);
   border-radius: 8px;

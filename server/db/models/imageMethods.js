@@ -17,6 +17,8 @@ const createImages = async (
     id: randomUUID(),
     path: mediaItem.path,
     type: mediaItem.kind,
+    fileName: mediaItem.name || null,
+    mimeType: mediaItem.mimeType || null,
     posterPath: mediaItem.poster || null,
     authorId: author_id,
   })));

@@ -1,5 +1,5 @@
 import {createElement, icon, image, video} from '../lib/dom';
-import {MESSAGE_TYPES, replaceTextEmojis} from '../lib/messages';
+import {getAttachmentCategory, getAttachmentIcon, MESSAGE_TYPES, replaceTextEmojis} from '../lib/messages';
 import type {MediaUpload} from '../types';
 import {EmojiPicker} from './EmojiPicker';
 
@@ -13,21 +13,33 @@ export function MessageComposer(onSendMessage: (value: {text: string; media: Med
   });
   const fileInput = createElement('input', {
     type: 'file',
-    multiple: true,
-    accept: 'image/*, video/*'
+    multiple: true
   });
   const inputFieldContainer = createElement('div', {className: 'input-field-container'});
   const preview = createElement('div', {className: 'files-preview'});
   const textFieldContainer = createElement('div', {className: 'text-field-container'});
 
   const isVideoFile = (src: string) => src.startsWith('data:video/');
+  const isImageFile = (src: string) => src.startsWith('data:image/');
 
   const renderPreviewMedia = (file: MediaUpload) => isVideoFile(file.file)
     ? createElement('div', {className: 'composer-media-preview composer-video-preview'}, [
       file.poster ? image(file.poster, 'composer-preview-image') : video(file.file, 'composer-preview-video'),
       icon('play_circle', 'composer-preview-play')
     ])
-    : createElement('div', {className: 'composer-media-preview'}, [image(file.file, 'composer-preview-image')]);
+    : isImageFile(file.file)
+      ? createElement('div', {className: 'composer-media-preview'}, [image(file.file, 'composer-preview-image')])
+      : createElement('div', {className: 'composer-media-preview composer-file-preview'}, [
+        file.poster
+          ? image(file.poster, 'composer-preview-image')
+          : createElement('div', {className: 'composer-file-fallback'}, [
+            icon(getAttachmentIcon(file), 'composer-file-icon'),
+            createElement('span', {
+              className: 'composer-file-ext',
+              text: file.name.split('.').pop()?.toUpperCase() || 'FILE'
+            })
+          ])
+      ]);
 
   const loadDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -91,6 +103,94 @@ export function MessageComposer(onSendMessage: (value: {text: string; media: Med
     }, {once: true});
   });
 
+  const generateTextPoster = async (file: File) => {
+    try {
+      const content = (await file.text())
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .slice(0, 4);
+      const canvas = document.createElement('canvas');
+      canvas.width = 320;
+      canvas.height = 240;
+      const context = canvas.getContext('2d');
+
+      if (!context) {
+        return null;
+      }
+
+      context.fillStyle = '#0f172a';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = '#22c55e';
+      context.font = '700 22px sans-serif';
+      context.fillText('TXT', 18, 34);
+      context.fillStyle = '#dbeafe';
+      context.font = '14px sans-serif';
+
+      content.forEach((line, index) => {
+        context.fillText(line.slice(0, 34), 18, 72 + (index * 32));
+      });
+
+      return canvas.toDataURL('image/png');
+    } catch {
+      return null;
+    }
+  };
+
+  const generateFilePoster = async (file: File) => {
+    const category = getAttachmentCategory({
+      kind: 'file',
+      name: file.name,
+      mimeType: file.type || null,
+      path: file.name,
+    });
+
+    if (category === 'text') {
+      const textPoster = await generateTextPoster(file);
+      if (textPoster) {
+        return textPoster;
+      }
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 320;
+    canvas.height = 240;
+    const context = canvas.getContext('2d');
+
+    if (!context) {
+      return null;
+    }
+
+    const extension = file.name.split('.').pop()?.toUpperCase() || 'FILE';
+    const label = category === 'sheet'
+      ? 'SHEET'
+      : category === 'archive'
+        ? 'ARCHIVE'
+        : category === 'document'
+          ? 'DOC'
+          : category === 'pdf'
+            ? 'PDF'
+            : 'FILE';
+
+    context.fillStyle = '#111827';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = '#1f2937';
+    context.fillRect(16, 16, canvas.width - 32, canvas.height - 32);
+    context.fillStyle = '#38bdf8';
+    context.fillRect(16, 16, canvas.width - 32, 56);
+    context.fillStyle = '#031018';
+    context.font = '700 22px sans-serif';
+    context.fillText(label, 28, 52);
+    context.fillStyle = '#e6edf7';
+    context.font = '700 64px sans-serif';
+    context.fillText(extension.slice(0, 4), 24, 148);
+    context.fillStyle = '#8b98aa';
+    context.font = '14px sans-serif';
+    context.fillText(file.name.slice(0, 28), 24, 214);
+
+    return canvas.toDataURL('image/png');
+  };
+
   const updateTextareaHeight = (height: number) => {
     inputContainerHeight = height <= 200 ? Math.max(height, 40) : 200;
     textFieldContainer.style.height = `${inputContainerHeight}px`;
@@ -109,7 +209,11 @@ export function MessageComposer(onSendMessage: (value: {text: string; media: Med
         drawPreview();
       });
 
-      return createElement('div', {}, [remove, renderPreviewMedia(file)]);
+      return createElement('div', {className: 'composer-preview-item'}, [
+        remove,
+        renderPreviewMedia(file),
+        createElement('span', {className: 'composer-preview-name', text: file.name})
+      ]);
     }), createElement('div'));
 
     inputFieldContainer.prepend(preview);
@@ -159,12 +263,21 @@ export function MessageComposer(onSendMessage: (value: {text: string; media: Med
 
     Promise.all(filesList.map(async (file) => {
       const dataUrl = await loadDataUrl(file);
-      const kind = file.type.startsWith('video/') ? 'video' : 'image';
-      const poster = kind === 'video' ? await generateVideoPoster(file) : null;
+      const kind = file.type.startsWith('video/')
+        ? 'video'
+        : file.type.startsWith('image/')
+          ? 'image'
+          : 'file';
+      const poster = kind === 'video'
+        ? await generateVideoPoster(file)
+        : kind === 'file'
+          ? await generateFilePoster(file)
+          : null;
 
       return {
         file: dataUrl,
         kind,
+        name: file.name,
         poster,
         mimeType: file.type || null,
       } satisfies MediaUpload;
@@ -190,7 +303,7 @@ export function MessageComposer(onSendMessage: (value: {text: string; media: Med
 
   return createElement('div', {className: 'message-composer'}, [
     createElement('div', {className: 'bottom-bar'}, [
-      createElement('label', {}, [fileInput, icon('add_photo_alternate')]),
+      createElement('label', {}, [fileInput, icon('attach_file')]),
       inputFieldContainer,
       createElement('button', {type: 'button', on: {click: sendMessage}}, [icon('send')])
     ])

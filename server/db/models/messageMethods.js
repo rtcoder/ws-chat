@@ -23,6 +23,7 @@ const normalizeMedia = (message) => {
   return (message.images || []).map((path) => ({
     path,
     kind: 'image',
+    name: path.split('/').pop() || null,
     poster: path,
     mimeType: null,
   }));

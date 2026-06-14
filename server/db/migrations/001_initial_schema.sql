@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS images (
   id UUID PRIMARY KEY,
   path TEXT NOT NULL,
   type TEXT NOT NULL DEFAULT 'image',
+  file_name TEXT,
+  mime_type TEXT,
   poster_path TEXT,
   author_id UUID REFERENCES users(id) ON DELETE SET NULL,
   chat_id UUID REFERENCES chats(id) ON DELETE CASCADE,

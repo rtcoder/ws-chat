@@ -43,7 +43,7 @@ const saveBase64ToFile = (mediaPayloads = []) => {
 
     mediaPayloads.forEach((mediaPayload) => {
       const normalizedMedia = typeof mediaPayload === 'string'
-        ? {file: mediaPayload, kind: 'image', poster: null, mimeType: null}
+        ? {file: mediaPayload, kind: 'image', name: null, poster: null, mimeType: null}
         : mediaPayload;
       const fileBuffer = decodeBase64File(normalizedMedia.file);
       const uploadsDir = 'uploads';
@@ -67,6 +67,7 @@ const saveBase64ToFile = (mediaPayloads = []) => {
       processedFiles.push({
         path: uploadedFilePath,
         kind: fileKind,
+        name: normalizedMedia.name || uniqueFileName,
         poster: posterPath || (fileKind === 'image' ? uploadedFilePath : null),
         mimeType: fileBuffer.mimeType,
       });
@@ -74,12 +75,20 @@ const saveBase64ToFile = (mediaPayloads = []) => {
 
     return processedFiles;
   } catch (error) {
-    processedFiles.forEach((filePath) => {
-      fs.unlink(filePath, (err) => {
+    processedFiles.forEach((fileItem) => {
+      fs.unlink(fileItem.path, (err) => {
         if (err) {
           console.error(err);
         }
       });
+
+      if (fileItem.poster && fileItem.poster !== fileItem.path) {
+        fs.unlink(fileItem.poster, (err) => {
+          if (err) {
+            console.error(err);
+          }
+        });
+      }
     });
     throw error;
   }

@@ -5,11 +5,12 @@ export type User = {
   avatar?: string;
 };
 
-export type MediaKind = 'image' | 'video';
+export type MediaKind = 'image' | 'video' | 'file';
 
 export type MediaItem = {
   path: string;
   kind: MediaKind;
+  name?: string | null;
   poster?: string | null;
   mimeType?: string | null;
 };
@@ -17,6 +18,7 @@ export type MediaItem = {
 export type MediaUpload = {
   file: string;
   kind: MediaKind;
+  name: string;
   poster?: string | null;
   mimeType?: string | null;
 };
