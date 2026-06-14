@@ -190,10 +190,20 @@ function ChatHeader(
   messages: Message[],
   userName: string,
   mediaCount: number,
-  onOpenMedia: () => void
+  onOpenMedia: () => void,
+  onOpenSidebar: () => void,
+  onOpenDetails: () => void
 ) {
   return createElement('header', {className: 'chat-header'}, [
     createElement('div', {className: 'chat-heading'}, [
+      createElement('button', {
+        type: 'button',
+        className: 'mobile-sidebar-toggle',
+        title: 'Open conversations',
+        on: {
+          click: () => onOpenSidebar()
+        }
+      }, [icon('menu')]),
       createElement('div', {className: 'room-avatar', text: getChatAvatarLabel(activeChat)}),
       createElement('div', {}, [
         createElement('h1', {text: activeChat?.name || 'Conversation'}),
@@ -215,7 +225,13 @@ function ChatHeader(
       createElement('button', {type: 'button', title: 'Search'}, [
         createElement('span', {className: 'material-icons icon', text: 'search'})
       ]),
-      createElement('button', {type: 'button', title: 'Conversation settings'}, [
+      createElement('button', {
+        type: 'button',
+        title: 'Conversation settings',
+        on: {
+          click: () => onOpenDetails()
+        }
+      }, [
         createElement('span', {className: 'material-icons icon', text: 'tune'})
       ])
     ])
@@ -384,6 +400,8 @@ export function ChatView() {
   const chats = createStore<ChatSummary[]>([]);
   const contacts = createStore<Message['author'][]>([]);
   const activeChatId = createStore<string | null>(null);
+  const mobileSidebarOpen = createStore(false);
+  const mobileDetailsOpen = createStore(false);
   const messages = createStore<Message[]>([]);
   const mediaGalleryOpen = createStore(false);
   const previewMedia = createStore<MediaItem | null>(null);
@@ -396,6 +414,59 @@ export function ChatView() {
   const composerSlot = createElement('div', {className: 'composer-panel'});
   const modalSlot = createElement('div');
   const previewSlot = createElement('div');
+  const sidebarPanel = createElement('div', {
+    className: 'panel-shell left',
+    on: {
+      click: (event) => {
+        if (event.target === event.currentTarget) {
+          mobileSidebarOpen.set(false);
+        }
+      }
+    }
+  });
+  const detailsPanel = createElement('div', {
+    className: 'panel-shell right',
+    on: {
+      click: (event) => {
+        if (event.target === event.currentTarget) {
+          mobileDetailsOpen.set(false);
+        }
+      }
+    }
+  });
+  const buildSidebar = () => {
+    const authId = user?._id || '';
+    return Sidebar(
+      chats.get(),
+      contacts.get(),
+      activeChatId.get(),
+      authId,
+      (chatId) => {
+        if (chatId !== activeChatId.get()) {
+          activeChatId.set(chatId);
+        }
+        mobileSidebarOpen.set(false);
+      },
+      (userId) => {
+        void openDirectChat(userId).then(() => {
+          mobileSidebarOpen.set(false);
+        });
+      },
+      handleLogout
+    );
+  };
+  const syncPanelVisibility = () => {
+    sidebarPanel.classList.toggle('open', mobileSidebarOpen.get());
+    detailsPanel.classList.toggle('open', mobileDetailsOpen.get());
+  };
+  const renderSidebarContent = () => {
+    render(sidebarPanel, buildSidebar());
+  };
+  const renderDetailsContent = () => {
+    const authId = user?._id || '';
+    const activeChat = chats.get().find((chat) => chat.id === activeChatId.get()) || null;
+    render(detailsPanel, ChatDetails(activeChat, chats.get(), messages.get(), authId));
+  };
   const loadMessagesForChat = (chatId: string | null) => {
     getMessages(chatId)
       .then(({data, error}) => {
@@ -460,11 +531,16 @@ export function ChatView() {
     modalSlot,
     previewSlot
   ]);
+  render(sidebarSlot, sidebarPanel);
+  render(detailsSlot, detailsPanel);
+  syncPanelVisibility();
 
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       mediaGalleryOpen.set(false);
       previewMedia.set(null);
+      mobileSidebarOpen.set(false);
+      mobileDetailsOpen.set(false);
     }
   });
 
@@ -473,22 +549,15 @@ export function ChatView() {
     const userName = user?.first_name || 'You';
     const mediaCount = getMediaEntries(state).length;
     const activeChat = chats.get().find((chat) => chat.id === activeChatId.get()) || null;
-    render(sidebarSlot, Sidebar(
-      chats.get(),
-      contacts.get(),
-      activeChatId.get(),
-      authId,
-      (chatId) => {
-        if (chatId !== activeChatId.get()) {
-          activeChatId.set(chatId);
-        }
-      },
-      (userId) => {
-        void openDirectChat(userId);
-      },
-      handleLogout
+    render(headerSlot, ChatHeader(
+      activeChat,
+      state,
+      userName,
+      mediaCount,
+      () => mediaGalleryOpen.set(true),
+      () => mobileSidebarOpen.set(true),
+      () => mobileDetailsOpen.set(true)
     ));
-    render(headerSlot, ChatHeader(activeChat, state, userName, mediaCount, () => mediaGalleryOpen.set(true)));
     render(messagesSlot, MessageList(
       state,
       user?._id || '',
@@ -496,7 +565,7 @@ export function ChatView() {
       removeMessage,
       (message) => replyToMessage.set(message)
     ));
-    render(detailsSlot, ChatDetails(activeChat, chats.get(), state, authId));
+    renderDetailsContent();
     render(modalSlot, MediaGalleryModal(state, mediaGalleryOpen.get(), () => mediaGalleryOpen.set(false)));
     render(previewSlot, MediaPreviewModal(previewMedia.get(), () => previewMedia.set(null)));
 
@@ -518,41 +587,29 @@ export function ChatView() {
       return;
     }
 
-    render(sidebarSlot, Sidebar(
-      state,
-      contacts.get(),
-      activeChatId.get(),
-      authId,
-      (chatId) => {
-        if (chatId !== activeChatId.get()) {
-          activeChatId.set(chatId);
-        }
-      },
-      (userId) => {
-        void openDirectChat(userId);
-      },
-      handleLogout
+    renderSidebarContent();
+    render(headerSlot, ChatHeader(
+      activeChat,
+      messages.get(),
+      user?.first_name || 'You',
+      getMediaEntries(messages.get()).length,
+      () => mediaGalleryOpen.set(true),
+      () => mobileSidebarOpen.set(true),
+      () => mobileDetailsOpen.set(true)
     ));
-    render(headerSlot, ChatHeader(activeChat, messages.get(), user?.first_name || 'You', getMediaEntries(messages.get()).length, () => mediaGalleryOpen.set(true)));
-    render(detailsSlot, ChatDetails(activeChat, state, messages.get(), authId));
+    renderDetailsContent();
   });
 
-  contacts.subscribe((state) => {
-    render(sidebarSlot, Sidebar(
-      chats.get(),
-      state,
-      activeChatId.get(),
-      user?._id || '',
-      (chatId) => {
-        if (chatId !== activeChatId.get()) {
-          activeChatId.set(chatId);
-        }
-      },
-      (userId) => {
-        void openDirectChat(userId);
-      },
-      handleLogout
-    ));
+  contacts.subscribe(() => {
+    renderSidebarContent();
+  });
+
+  mobileSidebarOpen.subscribe(() => {
+    syncPanelVisibility();
+  });
+
+  mobileDetailsOpen.subscribe(() => {
+    syncPanelVisibility();
   });
 
   activeChatId.subscribe((chatId) => {
