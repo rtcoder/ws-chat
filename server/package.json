@@ -6,7 +6,8 @@
   "scripts": {
     "migrate": "node db/migrate.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "npx nodemon server.js"
+    "start": "npx nodemon server.js",
+    "service:start": "node server.js"
   },
   "author": "",
   "license": "ISC",

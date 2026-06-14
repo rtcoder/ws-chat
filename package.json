@@ -4,7 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "install": "npm install -g knex && (cd server && npm i) && (cd client && npm i)"
+    "install": "npm install -g knex && (cd server && npm i) && (cd client && npm i)",
+    "service:build": "cd client && npm run build",
+    "service:install": "scripts/install-launchd.sh",
+    "service:status": "scripts/status-launchd.sh",
+    "service:uninstall": "scripts/uninstall-launchd.sh"
   },
   "author": "",
   "license": "ISC"
