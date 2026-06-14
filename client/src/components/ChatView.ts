@@ -1,4 +1,4 @@
-import {deleteMessage, getChats, getMessages, postMessage} from '../lib/api';
+import {createDirectChat, deleteMessage, getChats, getMessages, getUsers, postMessage} from '../lib/api';
 import {getLoggedUser, logout} from '../lib/auth';
 import {getMessageMedia} from '../lib/messages';
 import {connectMessagesSocket} from '../lib/websocket';
@@ -90,12 +90,14 @@ function SidebarContact(name: string, status: string, active = false, onClick?: 
 
 function Sidebar(
   chats: ChatSummary[],
+  contacts: Message['author'][],
   activeChatId: string | null,
   authId: string,
   onSelectChat: (chatId: string) => void,
+  onSelectContact: (userId: string) => void,
   onLogout: () => void
 ) {
-  const contacts = getUniqueContacts(chats, authId);
+  const visibleContacts = contacts.length ? contacts : getUniqueContacts(chats, authId);
 
   return createElement('aside', {className: 'app-sidebar'}, [
     createElement('div', {className: 'brand-row'}, [
@@ -140,8 +142,13 @@ function Sidebar(
     ]),
     createElement('div', {className: 'sidebar-section contacts-section'}, [
       createElement('div', {className: 'section-label', text: 'Contacts'}),
-      ...(contacts.length
-        ? contacts.map((contact) => SidebarContact(contact.first_name, 'Available'))
+      ...(visibleContacts.length
+        ? visibleContacts.map((contact) => SidebarContact(
+          `${contact.first_name}${contact.last_name ? ` ${contact.last_name}` : ''}`.trim(),
+          'Start direct chat',
+          false,
+          () => onSelectContact(contact._id)
+        ))
         : [
           SidebarContact('No contacts yet', 'Messages will create contacts')
         ])
@@ -375,6 +382,7 @@ function MediaPreviewModal(
 export function ChatView() {
   const user = getLoggedUser();
   const chats = createStore<ChatSummary[]>([]);
+  const contacts = createStore<Message['author'][]>([]);
   const activeChatId = createStore<string | null>(null);
   const messages = createStore<Message[]>([]);
   const mediaGalleryOpen = createStore(false);
@@ -396,6 +404,33 @@ export function ChatView() {
           replyToMessage.set(null);
         }
       });
+  };
+  const refreshChats = () => getChats()
+    .then(({data, error}) => {
+      if (!error && data) {
+        chats.set(data);
+        return data;
+      }
+
+      return chats.get();
+    });
+  const openDirectChat = async (userId: string) => {
+    const result = await createDirectChat(userId);
+
+    if (result.error || !result.data) {
+      return;
+    }
+
+    const nextChats = await refreshChats();
+    const chatId = result.data.id;
+    const createdChat = nextChats.find((chat) => chat.id === chatId);
+
+    if (createdChat) {
+      activeChatId.set(createdChat.id);
+      return;
+    }
+
+    activeChatId.set(chatId);
   };
   const handleLogout = () => {
     logout();
@@ -440,12 +475,16 @@ export function ChatView() {
     const activeChat = chats.get().find((chat) => chat.id === activeChatId.get()) || null;
     render(sidebarSlot, Sidebar(
       chats.get(),
+      contacts.get(),
       activeChatId.get(),
       authId,
       (chatId) => {
         if (chatId !== activeChatId.get()) {
           activeChatId.set(chatId);
         }
+      },
+      (userId) => {
+        void openDirectChat(userId);
       },
       handleLogout
     ));
@@ -481,6 +520,7 @@ export function ChatView() {
 
     render(sidebarSlot, Sidebar(
       state,
+      contacts.get(),
       activeChatId.get(),
       authId,
       (chatId) => {
@@ -488,10 +528,31 @@ export function ChatView() {
           activeChatId.set(chatId);
         }
       },
+      (userId) => {
+        void openDirectChat(userId);
+      },
       handleLogout
     ));
     render(headerSlot, ChatHeader(activeChat, messages.get(), user?.first_name || 'You', getMediaEntries(messages.get()).length, () => mediaGalleryOpen.set(true)));
     render(detailsSlot, ChatDetails(activeChat, state, messages.get(), authId));
+  });
+
+  contacts.subscribe((state) => {
+    render(sidebarSlot, Sidebar(
+      chats.get(),
+      state,
+      activeChatId.get(),
+      user?._id || '',
+      (chatId) => {
+        if (chatId !== activeChatId.get()) {
+          activeChatId.set(chatId);
+        }
+      },
+      (userId) => {
+        void openDirectChat(userId);
+      },
+      handleLogout
+    ));
   });
 
   activeChatId.subscribe((chatId) => {
@@ -523,10 +584,12 @@ export function ChatView() {
     }));
   });
 
-  getChats()
+  refreshChats();
+
+  getUsers()
     .then(({data, error}) => {
       if (!error && data) {
-        chats.set(data);
+        contacts.set(data);
       }
     });
 
@@ -539,20 +602,12 @@ export function ChatView() {
     const currentChatId = activeChatId.get();
 
     if (payload.chatId && currentChatId && payload.chatId !== currentChatId) {
-      getChats().then(({data, error}) => {
-        if (!error && data) {
-          chats.set(data);
-        }
-      });
+      void refreshChats();
       return;
     }
 
     messages.update((state) => [...state, payload]);
-    getChats().then(({data, error}) => {
-      if (!error && data) {
-        chats.set(data);
-      }
-    });
+    void refreshChats();
   });
 
   return container;

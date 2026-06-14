@@ -31,6 +31,24 @@ export function getChats() {
   });
 }
 
+export function getUsers() {
+  return fetchApi<User[]>(`${API_URL}/api/users`, {
+    headers: {
+      'x-access-token': getAuthToken() || ''
+    }
+  });
+}
+
+export function createDirectChat(userId: string) {
+  return fetchApi<ChatSummary>(`${API_URL}/api/chats/direct`, {
+    method: 'POST',
+    body: JSON.stringify({userId}),
+    headers: {
+      'x-access-token': getAuthToken() || ''
+    }
+  });
+}
+
 export function getMessages(chatId?: string | null) {
   const search = chatId ? `?chatId=${encodeURIComponent(chatId)}` : '';
 
