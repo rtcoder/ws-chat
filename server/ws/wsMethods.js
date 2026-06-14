@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const {createMessage, getMessageWithAuthor} = require("../db/models/messageMethods");
+const {getChatByIdForUser, getChatUserIds, getGeneralChatForUser} = require('../db/models/chatMethods');
 const {getConfig} = require("../utils/config");
 
 const getTokenKey = () => process.env.TOKEN_KEY || getConfig().API_SECRET;
@@ -40,10 +41,15 @@ const removeClient = (userID, connection) => {
   }
 };
 
-const sendMessageWS = json => {
+const sendMessageWS = (json, recipientUserIds = null) => {
   const payload = encodeMessage(json);
+  const recipients = recipientUserIds ? new Set(recipientUserIds) : null;
 
   clients.forEach((userConnections, userID) => {
+    if (recipients && !recipients.has(userID)) {
+      return;
+    }
+
     userConnections.forEach((connection) => {
       try {
         connection.sendUTF(payload);
@@ -55,18 +61,33 @@ const sendMessageWS = json => {
   });
 };
 
+const resolveSocketChat = async (requestedChatId, userId) => {
+  if (!requestedChatId || requestedChatId === 'general') {
+    return getGeneralChatForUser(userId);
+  }
+
+  return getChatByIdForUser(requestedChatId, userId);
+};
+
 const onMessage = user_id => async message => {
   if (message.type === 'utf8') {
     const dataFromClient = decodeMessage(message.utf8Data);
 
     switch (dataFromClient.type) {
       case WS_ACTIONS.MESSAGE_ADD:
+        {
+          const chat = await resolveSocketChat(dataFromClient.data.chatId || null, user_id);
 
-        createMessage({...dataFromClient.data, user_id}, message => {
-          getMessageWithAuthor(message._id).then((result) => {
-            sendMessageWS(result);
+          if (!chat) {
+            return;
+          }
+
+          createMessage({...dataFromClient.data, chatId: chat.id, user_id}, async createdMessage => {
+            const result = await getMessageWithAuthor(createdMessage._id);
+            const recipientIds = await getChatUserIds(chat.id);
+            sendMessageWS(result, recipientIds);
           });
-        });
+        }
         break;
       case WS_ACTIONS.MESSAGE_DELETE:
 

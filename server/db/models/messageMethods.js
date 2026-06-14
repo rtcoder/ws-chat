@@ -2,6 +2,7 @@ const {randomUUID} = require('crypto');
 const {and, asc, desc, eq, inArray, or} = require('drizzle-orm');
 const {db} = require('../db');
 const {images, messageReactions, messages, users} = require('../schema');
+const {touchChat} = require('./chatMethods');
 
 const MESSAGE_TYPES = {
   MESSAGE: 'msg',
@@ -42,7 +43,6 @@ const toMessage = ({message, author, reactions}) => ({
     last_name: author.lastName,
     avatar: author.avatar,
   },
-  relatedUser: message.relatedUserId || null,
   reactions,
   replyTo: message.replyToId || null,
   type: message.type,
@@ -113,14 +113,14 @@ const createMessage = async (
     media: data.media || [],
     images: data.images || [],
     authorId: data.user_id,
-    relatedUserId: data.relatedUser || null,
     replyToId: data.replyTo || null,
     type: data.type || MESSAGE_TYPES.MESSAGE,
     isSpoiler: Boolean(data.isSpoiler),
     isOnlyEmoji,
-    chatId: data.chatId || null,
+    chatId: data.chatId,
   });
 
+  await touchChat(data.chatId);
   const message = await getMessageWithAuthor(id);
   afterSave(message);
   return message;
@@ -133,12 +133,19 @@ const getMessageWithAuthor = async (id) => {
   return mapRowsToMessages(rows)[0] || null;
 };
 
-const getLatestMessages = async (limit = 30) => {
-  const latestRows = await db
-    .select({id: messages.id})
-    .from(messages)
-    .orderBy(desc(messages.createdAt))
-    .limit(limit);
+const getLatestMessages = async ({limit = 30, chatId}) => {
+  const latestRows = chatId
+    ? await db
+      .select({id: messages.id})
+      .from(messages)
+      .where(eq(messages.chatId, chatId))
+      .orderBy(desc(messages.createdAt))
+      .limit(limit)
+    : await db
+      .select({id: messages.id})
+      .from(messages)
+      .orderBy(desc(messages.createdAt))
+      .limit(limit);
 
   const ids = latestRows.map(({id}) => id).reverse();
 
@@ -187,6 +194,7 @@ const deleteMessage = async (messageId, userId) => {
     status: 'deleted',
     messageId,
     mediaItems,
+    chatId: existingMessage.chatId,
   };
 };
 

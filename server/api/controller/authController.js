@@ -3,6 +3,7 @@ const {eq} = require('drizzle-orm');
 const {db} = require("../../db/db");
 const {users} = require("../../db/schema");
 const {getConfig} = require("../../utils/config");
+const {ensureUserInGeneralChat} = require('../../db/models/chatMethods');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -60,6 +61,7 @@ const registerRequest = async (req, res, next) => {
       }
     );
 
+    await ensureUserInGeneralChat(user.id);
     res.status(201).json(toUserResponse(user, token));
   } catch (err) {
     console.error(err);

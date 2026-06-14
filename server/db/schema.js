@@ -18,6 +18,9 @@ const users = pgTable('users', {
 
 const chats = pgTable('chats', {
   id: uuid('id').primaryKey(),
+  type: text('type').notNull().default('group'),
+  systemKey: text('system_key').unique(),
+  directKey: text('direct_key').unique(),
   name: text('name'),
   image: text('image'),
   ownerId: uuid('owner_id').references(() => users.id, {onDelete: 'set null'}),
@@ -41,12 +44,11 @@ const messages = pgTable('messages', {
   media: jsonb('media').notNull().default(sql`'[]'::jsonb`),
   images: text('images').array().notNull().default(sql`'{}'::text[]`),
   authorId: uuid('author_id').notNull().references(() => users.id, {onDelete: 'cascade'}),
-  relatedUserId: uuid('related_user_id').references(() => users.id, {onDelete: 'set null'}),
   replyToId: uuid('reply_to_id').references(() => messages.id, {onDelete: 'set null'}),
   type: text('type').notNull().default('msg'),
   isSpoiler: boolean('is_spoiler').notNull().default(false),
   isOnlyEmoji: boolean('is_only_emoji').notNull().default(false),
-  chatId: uuid('chat_id').references(() => chats.id, {onDelete: 'cascade'}),
+  chatId: uuid('chat_id').notNull().references(() => chats.id, {onDelete: 'cascade'}),
   ...timestamps,
 }, (table) => [
   index('messages_created_at_idx').on(table.createdAt),

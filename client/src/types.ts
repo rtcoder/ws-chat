@@ -43,8 +43,28 @@ export type MediaUpload = {
   waveform?: number[] | null;
   duration?: number | null;
 };
-export type SendMsgValue = {text: string; media: MediaUpload[]; type: string; replyTo?: string | null};
+export type SendMsgValue = {text: string; media: MediaUpload[]; type: string; replyTo?: string | null; chatId?: string | null};
 export type SendMessage = (value: SendMsgValue) => void;
+
+export type ChatType = 'channel' | 'direct' | 'group';
+
+export type ChatSummary = {
+  id: string;
+  type: ChatType;
+  systemKey?: string | null;
+  name: string;
+  image?: string | null;
+  members: User[];
+  latestMessage?: {
+    text?: string | null;
+    createdAt?: string | null;
+    authorId?: string | null;
+    mediaCount?: number;
+  } | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type Message = {
   _id: string;
   text: string;
@@ -54,6 +74,7 @@ export type Message = {
   author: User;
   isOnlyEmoji?: boolean;
   replyTo?: string | null;
+  chatId?: string | null;
   createdAt?: string;
   updatedAt?: string;
 };

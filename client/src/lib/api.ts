@@ -1,7 +1,7 @@
 import {getAuthToken, setAuthToken, setLoggedUser} from './auth';
 import {API_URL} from './config';
 import {encodeJson} from './encoding';
-import type {ApiResult, SendMsgValue, Message, User} from '../types';
+import type {ApiResult, ChatSummary, SendMsgValue, Message, User} from '../types';
 
 async function fetchApi<T>(input: RequestInfo | URL, init: RequestInit = {}): Promise<ApiResult<T>> {
   const headers = new Headers(init.headers);
@@ -23,8 +23,18 @@ async function fetchApi<T>(input: RequestInfo | URL, init: RequestInit = {}): Pr
   return result;
 }
 
-export function getMessages() {
-  return fetchApi<Message[]>(`${API_URL}/api/messages`, {
+export function getChats() {
+  return fetchApi<ChatSummary[]>(`${API_URL}/api/chats`, {
+    headers: {
+      'x-access-token': getAuthToken() || ''
+    }
+  });
+}
+
+export function getMessages(chatId?: string | null) {
+  const search = chatId ? `?chatId=${encodeURIComponent(chatId)}` : '';
+
+  return fetchApi<Message[]>(`${API_URL}/api/messages${search}`, {
     headers: {
       'x-access-token': getAuthToken() || ''
     }

@@ -3,14 +3,32 @@ const fs = require('fs/promises');
 const {createMessage, deleteMessage, getLatestMessages, getMessageWithAuthor} = require("../../db/models/messageMethods");
 const {sendMessageWS, decodeMessage} = require("../../ws/wsMethods");
 const {createImages} = require("../../db/models/imageMethods");
+const {getChatByIdForUser, getChatUserIds, getGeneralChatForUser} = require('../../db/models/chatMethods');
 
 const getMessage = async (req, res, next) => {
   try {
-    res.json(await getLatestMessages(30));
+    const requestedChatId = typeof req.query.chatId === 'string' ? req.query.chatId : null;
+    const chat = requestedChatId && requestedChatId !== 'general'
+      ? await getChatByIdForUser(requestedChatId, req.user.user_id)
+      : await getGeneralChatForUser(req.user.user_id);
+
+    if (!chat) {
+      return res.status(404).json({message: 'Chat not found'});
+    }
+
+    res.json(await getLatestMessages({limit: 30, chatId: chat.id}));
   } catch (err) {
     console.error(err);
     res.status(500).send(err);
   }
+};
+
+const resolveMessageChat = async (requestedChatId, userId) => {
+  if (!requestedChatId || requestedChatId === 'general') {
+    return getGeneralChatForUser(userId);
+  }
+
+  return getChatByIdForUser(requestedChatId, userId);
 };
 
 const saveBase64ToFile = (mediaPayloads = []) => {
@@ -105,25 +123,26 @@ const saveBase64ToFile = (mediaPayloads = []) => {
 const postMessage = async (req, res, next) => {
   try {
     const {data} = req.body;
-
-
     const dataFromClient = decodeMessage(data);
     const msgData = dataFromClient.data;
+    const chat = await resolveMessageChat(msgData.chatId || null, req.user.user_id);
+
+    if (!chat) {
+      return res.status(404).json({message: 'Chat not found'});
+    }
 
     const resultMediaList = saveBase64ToFile(msgData.media || msgData.images || []);
-
-    createImages(resultMediaList, req.user.user_id, savedMedia => {
-      createMessage({
-        ...msgData,
-        media: savedMedia,
-        images: savedMedia.map((item) => item.path),
-        user_id: req.user.user_id
-      }, (message) => {
-        getMessageWithAuthor(message._id).then((result) => {
-          sendMessageWS(result);
-        });
-      });
+    const savedMedia = await createImages(resultMediaList, req.user.user_id, chat.id);
+    const message = await createMessage({
+      ...msgData,
+      chatId: chat.id,
+      media: savedMedia,
+      images: savedMedia.map((item) => item.path),
+      user_id: req.user.user_id
     });
+    const result = await getMessageWithAuthor(message._id);
+    const recipientIds = await getChatUserIds(chat.id);
+    sendMessageWS(result, recipientIds);
 
     res.status(201).send();
   } catch (err) {
@@ -163,12 +182,13 @@ const removeMessage = async (req, res) => {
     }
 
     await deleteStoredFiles(result.mediaItems);
+    const recipientIds = await getChatUserIds(result.chatId);
     sendMessageWS({
       type: 'message_delete',
       data: {
         messageId: result.messageId,
       }
-    });
+    }, recipientIds);
 
     return res.status(204).send();
   } catch (err) {

@@ -5,6 +5,7 @@ const {images} = require('../schema');
 const createImages = async (
   mediaItems,
   author_id,
+  chatId,
   afterSaveAll = () => {
   }
 ) => {
@@ -21,6 +22,7 @@ const createImages = async (
     mimeType: mediaItem.mimeType || null,
     posterPath: mediaItem.poster || null,
     authorId: author_id,
+    chatId,
   })));
 
   afterSaveAll(mediaItems);
