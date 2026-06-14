@@ -1,5 +1,5 @@
 import {deleteMessage, getMessages, postMessage} from '../lib/api';
-import {getLoggedUser} from '../lib/auth';
+import {getLoggedUser, logout} from '../lib/auth';
 import {getMessageMedia} from '../lib/messages';
 import {connectMessagesSocket} from '../lib/websocket';
 import {createElement, icon, image, render, resolveMediaSrc, video} from '../lib/dom';
@@ -87,16 +87,29 @@ function SidebarContact(name: string, status: string, active = false) {
   ]);
 }
 
-function Sidebar(messages: Message[], authId: string) {
+function Sidebar(messages: Message[], authId: string, onLogout: () => void) {
   const contacts = getUniqueContacts(messages, authId);
   const lastMessage = messages[messages.length - 1];
 
   return createElement('aside', {className: 'app-sidebar'}, [
     createElement('div', {className: 'brand-row'}, [
-      createElement('div', {className: 'brand-mark', text: 'W'}),
-      createElement('div', {}, [
-        createElement('div', {className: 'brand-name', text: 'WS Chat'}),
-        createElement('div', {className: 'brand-subtitle', text: 'Realtime workspace'})
+      createElement('div', {className: 'brand-group'}, [
+        createElement('div', {className: 'brand-mark', text: 'W'}),
+        createElement('div', {}, [
+          createElement('div', {className: 'brand-name', text: 'WS Chat'}),
+          createElement('div', {className: 'brand-subtitle', text: 'Realtime workspace'})
+        ])
+      ]),
+      createElement('button', {
+        type: 'button',
+        className: 'sidebar-logout',
+        title: 'Log out',
+        on: {
+          click: () => onLogout()
+        }
+      }, [
+        icon('logout'),
+        createElement('span', {text: 'Log out'})
       ])
     ]),
     createElement('div', {className: 'sidebar-search'}, [
@@ -335,6 +348,10 @@ export function ChatView() {
   const composerSlot = createElement('div', {className: 'composer-panel'});
   const modalSlot = createElement('div');
   const previewSlot = createElement('div');
+  const handleLogout = () => {
+    logout();
+    window.location.reload();
+  };
   const removeMessage = (messageId: string) => {
     deleteMessage(messageId)
       .then(({error, status}) => {
@@ -371,7 +388,7 @@ export function ChatView() {
     const authId = user?._id || '';
     const userName = user?.first_name || 'You';
     const mediaCount = getMediaEntries(state).length;
-    render(sidebarSlot, Sidebar(state, authId));
+    render(sidebarSlot, Sidebar(state, authId, handleLogout));
     render(headerSlot, ChatHeader(state, userName, mediaCount, () => mediaGalleryOpen.set(true)));
     render(messagesSlot, MessageList(
       state,

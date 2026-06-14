@@ -393,12 +393,13 @@ export function MessageList(
   groups.forEach((group) => {
     const messageBelongsToLoggedUser = belongsToUser(group.author, authId);
     const userIcon = group.author.avatar
-      ? image('https://th.bing.com/th/id/OIP.tb_57ZQ51gNqsOIw1BWX2wHaEo?pid=ImgDet&rs=1')
+      ? image(group.author.avatar)
       : icon('account_circle');
 
     container.append(createElement('div', {
       className: `user-messages-group ${messageBelongsToLoggedUser ? 'right' : 'left'}`
     }, [
+      createElement('div', {className: 'user-icon'}, [userIcon]),
       createElement('div', {className: 'user-group-content'}, [
         createElement('div', {className: 'user-name', text: group.author.first_name}),
         createElement('div', {className: 'group'}, group.messages.map((message) => (
@@ -412,7 +413,6 @@ export function MessageList(
           )
         )))
       ]),
-      createElement('div', {className: 'user-icon'}, [userIcon])
     ]));
   });
 

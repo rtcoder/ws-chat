@@ -70,6 +70,7 @@ button {
 }
 
 .brand-row,
+.brand-group,
 .chat-heading,
 .conversation-item,
 .detail-link {
@@ -78,8 +79,14 @@ button {
 }
 
 .brand-row {
+  justify-content: space-between;
   gap: 12px;
   min-height: 44px;
+}
+
+.brand-group {
+  gap: 12px;
+  min-width: 0;
 }
 
 .brand-mark,
@@ -116,6 +123,32 @@ button {
 .brand-subtitle {
   margin-top: 2px;
   font-size: 12px;
+}
+
+.sidebar-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted-strong);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.sidebar-logout:hover {
+  border-color: rgba(56, 189, 248, 0.34);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.sidebar-logout .icon {
+  font-size: 18px;
 }
 
 .sidebar-search {

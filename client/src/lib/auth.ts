@@ -21,6 +21,11 @@ export function setAuthToken(token: string) {
   localStorage.setItem(TOKEN_KEY, token);
 }
 
+export function logout() {
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(TOKEN_KEY);
+}
+
 export function isAuthenticated() {
   return Boolean(getLoggedUser() && getAuthToken());
 }
