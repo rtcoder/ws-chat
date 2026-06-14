@@ -30,6 +30,11 @@ export function isVideoPath(src: string) {
   return normalized.startsWith('data:video/') || ['.mp4', '.webm', '.ogg', '.mov', '.m4v'].some((ext) => normalized.endsWith(ext));
 }
 
+export function isAudioPath(src: string) {
+  const normalized = src.split('?')[0].toLowerCase();
+  return normalized.startsWith('data:audio/') || ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac'].some((ext) => normalized.endsWith(ext));
+}
+
 export function isImagePath(src: string) {
   const normalized = src.split('?')[0].toLowerCase();
   return normalized.startsWith('data:image/') || ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.avif'].some((ext) => normalized.endsWith(ext));
@@ -52,6 +57,10 @@ export function getAttachmentCategory(media: Pick<MediaItem, 'kind' | 'name' | '
 
   if (media.kind === MediaKind.VIDEO) {
     return AttachmentCategory.VIDEO;
+  }
+
+  if (media.kind === MediaKind.AUDIO) {
+    return AttachmentCategory.AUDIO;
   }
 
   if (mimeType.includes('pdf') || extension === 'pdf') {
@@ -87,6 +96,8 @@ export function getAttachmentIcon(media: Pick<MediaItem, 'kind' | 'name' | 'mime
       return 'table_chart';
     case 'document':
       return 'description';
+    case 'audio':
+      return 'graphic_eq';
     case 'text':
       return 'article';
     default:
@@ -101,10 +112,14 @@ export function getMessageMedia(message: Message): MediaItem[] {
 
   return (message.images || []).map((path): MediaItem => ({
     path,
-    kind: isVideoPath(path) ? MediaKind.VIDEO : (isImagePath(path) ? MediaKind.IMAGE : MediaKind.FILE),
+    kind: isVideoPath(path)
+      ? MediaKind.VIDEO
+      : (isAudioPath(path) ? MediaKind.AUDIO : (isImagePath(path) ? MediaKind.IMAGE : MediaKind.FILE)),
     name: path.split('/').pop() || null,
-    poster: isVideoPath(path) ? null : path,
+    poster: isVideoPath(path) || isAudioPath(path) ? null : path,
     mimeType: null,
+    waveform: null,
+    duration: null,
   }));
 }
 

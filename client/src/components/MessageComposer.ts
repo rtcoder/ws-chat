@@ -21,12 +21,30 @@ export function MessageComposer(onSendMessage: SendMessage) {
 
   const isVideoFile = (src: string) => src.startsWith('data:video/');
   const isImageFile = (src: string) => src.startsWith('data:image/');
+  const isAudioFile = (src: string) => src.startsWith('data:audio/');
+
+  const renderWaveformBars = (waveform: number[] = []) => createElement('div', {className: 'composer-waveform'}, waveform.map((value) => (
+    createElement('span', {
+      className: 'composer-waveform-bar',
+      attrs: {
+        style: `height:${Math.max(10, Math.round(value * 100))}%`
+      }
+    })
+  )));
 
   const renderPreviewMedia = (file: MediaUpload) => isVideoFile(file.file)
     ? createElement('div', {className: 'composer-media-preview composer-video-preview'}, [
       file.poster ? image(file.poster, 'composer-preview-image') : video(file.file, 'composer-preview-video'),
       icon('play_circle', 'composer-preview-play')
     ])
+    : isAudioFile(file.file)
+      ? createElement('div', {className: 'composer-media-preview composer-audio-preview'}, [
+        createElement('div', {className: 'composer-audio-head'}, [
+          icon('graphic_eq', 'composer-audio-icon'),
+          createElement('span', {className: 'composer-audio-label', text: 'Audio'})
+        ]),
+        renderWaveformBars(file.waveform || [])
+      ])
     : isImageFile(file.file)
       ? createElement('div', {className: 'composer-media-preview'}, [image(file.file, 'composer-preview-image')])
       : createElement('div', {className: 'composer-media-preview composer-file-preview'}, [
@@ -102,6 +120,78 @@ export function MessageComposer(onSendMessage: SendMessage) {
       resolve(null);
     }, {once: true});
   });
+
+  const getAudioContext = () => {
+    const BrowserAudioContext = window.AudioContext || (window as typeof window & {webkitAudioContext?: typeof AudioContext}).webkitAudioContext;
+    return BrowserAudioContext ? new BrowserAudioContext() : null;
+  };
+
+  const sampleWaveform = (channelData: Float32Array, sampleCount = 56) => {
+    const blockSize = Math.floor(channelData.length / sampleCount) || 1;
+
+    return Array.from({length: sampleCount}, (_, index) => {
+      const start = index * blockSize;
+      const end = Math.min(start + blockSize, channelData.length);
+      let peak = 0;
+
+      for (let cursor = start; cursor < end; cursor += 1) {
+        peak = Math.max(peak, Math.abs(channelData[cursor] || 0));
+      }
+
+      return Math.min(1, peak || 0.04);
+    });
+  };
+
+  const renderAudioPoster = (waveform: number[]) => {
+    const width = 400;
+    const height = 100;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+
+    if (!context) {
+      return null;
+    }
+
+    context.fillStyle = '#38bdf8';
+    const gap = 3;
+    const innerWidth = width - 40;
+    const barWidth = Math.max(3, Math.floor((innerWidth - (gap * (waveform.length - 1))) / waveform.length));
+
+    waveform.forEach((value, index) => {
+      const barHeight = Math.max(10, value * 54);
+      const x = 20 + (index * (barWidth + gap));
+      const y = Math.round((height - barHeight) / 2);
+      context.fillRect(x, y, barWidth, barHeight);
+    });
+
+    return canvas.toDataURL('image/png');
+  };
+
+  const generateAudioMetadata = async (file: File) => {
+    try {
+      const audioContext = getAudioContext();
+      const buffer = await file.arrayBuffer();
+
+      if (!audioContext) {
+        return {waveform: [], duration: null, poster: null};
+      }
+
+      const decoded = await audioContext.decodeAudioData(buffer.slice(0));
+      const waveform = sampleWaveform(decoded.getChannelData(0));
+      const poster = renderAudioPoster(waveform);
+      await audioContext.close();
+
+      return {
+        waveform,
+        duration: decoded.duration,
+        poster,
+      };
+    } catch {
+      return {waveform: [], duration: null, poster: null};
+    }
+  };
 
   const generateTextPoster = async (file: File) => {
     try {
@@ -265,11 +355,16 @@ export function MessageComposer(onSendMessage: SendMessage) {
       const dataUrl = await loadDataUrl(file);
       const kind: MediaKind = file.type.startsWith('video/')
         ? MediaKind.VIDEO
+        : file.type.startsWith('audio/')
+          ? MediaKind.AUDIO
         : file.type.startsWith('image/')
           ? MediaKind.IMAGE
           : MediaKind.FILE;
+      const audioMeta = kind === MediaKind.AUDIO ? await generateAudioMetadata(file) : null;
       const poster = kind === MediaKind.VIDEO
         ? await generateVideoPoster(file)
+        : kind === MediaKind.AUDIO
+          ? audioMeta?.poster || null
         : kind === MediaKind.FILE
           ? await generateFilePoster(file)
           : null;
@@ -280,6 +375,8 @@ export function MessageComposer(onSendMessage: SendMessage) {
         name: file.name,
         poster,
         mimeType: file.type || null,
+        waveform: audioMeta?.waveform || null,
+        duration: audioMeta?.duration || null,
       } satisfies MediaUpload;
     }))
       .then((loadedFiles) => {

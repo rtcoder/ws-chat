@@ -8,12 +8,14 @@ export type User = {
 export enum MediaKind {
   IMAGE = 'image',
   VIDEO = 'video',
+  AUDIO = 'audio',
   FILE = 'file',
 }
 
 export enum AttachmentCategory {
   IMAGE = 'image',
   VIDEO = 'video',
+  AUDIO = 'audio',
   PDF = 'pdf',
   ARCHIVE = 'archive',
   SHEET = 'sheet',
@@ -28,6 +30,8 @@ export type MediaItem = {
   name?: string | null;
   poster?: string | null;
   mimeType?: string | null;
+  waveform?: number[] | null;
+  duration?: number | null;
 };
 
 export type MediaUpload = {
@@ -36,6 +40,8 @@ export type MediaUpload = {
   name: string;
   poster?: string | null;
   mimeType?: string | null;
+  waveform?: number[] | null;
+  duration?: number | null;
 };
 export type SendMsgValue = {text: string; media: MediaUpload[]; type: string};
 export type SendMessage = (value: SendMsgValue) => void;

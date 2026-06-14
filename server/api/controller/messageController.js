@@ -50,7 +50,11 @@ const saveBase64ToFile = (mediaPayloads = []) => {
       const fileBuffer = decodeBase64File(normalizedMedia.file);
       const uploadsDir = 'uploads';
       const fileExtension = mimeToExtension(fileBuffer.mimeType);
-      const fileKind = normalizedMedia.kind || (fileBuffer.mimeType.startsWith('video/') ? 'video' : 'image');
+      const fileKind = normalizedMedia.kind || (
+        fileBuffer.mimeType.startsWith('video/')
+          ? 'video'
+          : (fileBuffer.mimeType.startsWith('audio/') ? 'audio' : 'image')
+      );
       const uniqueFileName = `${fileKind}-${Date.now()}-${randomUUID()}.${fileExtension}`;
       const uploadedFilePath = path.posix.join(uploadsDir, uniqueFileName);
 
@@ -58,7 +62,7 @@ const saveBase64ToFile = (mediaPayloads = []) => {
 
       let posterPath = null;
 
-      if (fileKind === 'video' && normalizedMedia.poster) {
+      if ((fileKind === 'video' || fileKind === 'audio') && normalizedMedia.poster) {
         const posterBuffer = decodeBase64File(normalizedMedia.poster);
         const posterExtension = mimeToExtension(posterBuffer.mimeType);
         const posterName = `poster-${Date.now()}-${randomUUID()}.${posterExtension}`;
@@ -72,6 +76,8 @@ const saveBase64ToFile = (mediaPayloads = []) => {
         name: normalizedMedia.name || uniqueFileName,
         poster: posterPath || (fileKind === 'image' ? uploadedFilePath : null),
         mimeType: fileBuffer.mimeType,
+        waveform: normalizedMedia.waveform || null,
+        duration: normalizedMedia.duration || null,
       });
     });
 

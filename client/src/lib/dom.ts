@@ -42,7 +42,11 @@ export function icon(name: string, className = '') {
 }
 
 export function resolveMediaSrc(src: string) {
-  return src.startsWith('data:image') || src.startsWith('data:video') || src.startsWith('https://') || src.startsWith('http://')
+  return src.startsWith('data:image')
+    || src.startsWith('data:video')
+    || src.startsWith('data:audio')
+    || src.startsWith('https://')
+    || src.startsWith('http://')
     ? src
     : `${API_URL}/${src}`;
 }
@@ -65,6 +69,17 @@ export function video(src: string, className = '', controls = false) {
     src: normalizedSrc,
     controls,
     playsInline: true,
+    preload: 'metadata'
+  });
+}
+
+export function audio(src: string, className = '', controls = false) {
+  const normalizedSrc = resolveMediaSrc(src);
+
+  return createElement('audio', {
+    className,
+    src: normalizedSrc,
+    controls,
     preload: 'metadata'
   });
 }

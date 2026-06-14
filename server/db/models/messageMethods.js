@@ -26,6 +26,8 @@ const normalizeMedia = (message) => {
     name: path.split('/').pop() || null,
     poster: path,
     mimeType: null,
+    waveform: null,
+    duration: null,
   }));
 };
 
