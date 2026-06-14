@@ -47,15 +47,31 @@ export function icon(name: string, className = '') {
   });
 }
 
-export function image(src: string, className = '', alt = '') {
-  const normalizedSrc = src.startsWith('data:image') || src.startsWith('https://') || src.startsWith('http://')
+export function resolveMediaSrc(src: string) {
+  return src.startsWith('data:image') || src.startsWith('data:video') || src.startsWith('https://') || src.startsWith('http://')
     ? src
     : `${API_URL}/${src}`;
+}
+
+export function image(src: string, className = '', alt = '') {
+  const normalizedSrc = resolveMediaSrc(src);
 
   return createElement('img', {
     className,
     src: normalizedSrc,
     alt
+  });
+}
+
+export function video(src: string, className = '', controls = false) {
+  const normalizedSrc = resolveMediaSrc(src);
+
+  return createElement('video', {
+    className,
+    src: normalizedSrc,
+    controls,
+    playsInline: true,
+    preload: 'metadata'
   });
 }
 

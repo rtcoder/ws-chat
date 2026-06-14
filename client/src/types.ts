@@ -5,9 +5,26 @@ export type User = {
   avatar?: string;
 };
 
+export type MediaKind = 'image' | 'video';
+
+export type MediaItem = {
+  path: string;
+  kind: MediaKind;
+  poster?: string | null;
+  mimeType?: string | null;
+};
+
+export type MediaUpload = {
+  file: string;
+  kind: MediaKind;
+  poster?: string | null;
+  mimeType?: string | null;
+};
+
 export type Message = {
   _id: string;
   text: string;
+  media?: MediaItem[];
   images: string[];
   type: string;
   author: User;

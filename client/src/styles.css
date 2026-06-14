@@ -496,6 +496,8 @@ textarea::placeholder {
 .images > .image-handler {
   width: calc(100% / 3);
   padding: 2px;
+  border: 0;
+  background: transparent;
   overflow: hidden;
   aspect-ratio: 1 / 1;
   cursor: pointer;
@@ -503,6 +505,26 @@ textarea::placeholder {
 
 .images > .image-handler:hover {
   filter: brightness(90%);
+}
+
+.media-tile,
+.media-tile img,
+.message-video-thumb {
+  width: 100%;
+  height: 100%;
+}
+
+.media-tile {
+  position: relative;
+  padding: 2px;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+}
+
+.media-tile img,
+.message-video-thumb {
+  border-radius: 8px;
+  object-fit: cover;
 }
 
 .images.i1 > .image-handler {
@@ -514,11 +536,22 @@ textarea::placeholder {
   width: 50%;
 }
 
-.images > .image-handler img {
-  width: 100%;
-  height: 100%;
-  border-radius: 8px;
-  object-fit: cover;
+.media-video {
+  background: #020617;
+}
+
+.message-video-thumb {
+  display: block;
+  pointer-events: none;
+}
+
+.media-play-icon {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  color: rgba(248, 250, 252, 0.96);
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+  font-size: 28px;
 }
 
 .composer-panel {
@@ -607,6 +640,40 @@ textarea {
   position: relative;
   width: 52px;
   height: 52px;
+}
+
+.composer-media-preview,
+.composer-preview-image,
+.composer-preview-video {
+  width: 52px;
+  height: 52px;
+}
+
+.composer-media-preview {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #0b111b;
+}
+
+.composer-preview-image,
+.composer-preview-video {
+  display: block;
+  object-fit: cover;
+}
+
+.composer-video-preview {
+  background: #020617;
+}
+
+.composer-preview-play {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  color: rgba(248, 250, 252, 0.96);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  font-size: 20px;
+  pointer-events: none;
 }
 
 .files-preview .icon.delete-image {
@@ -845,11 +912,21 @@ textarea {
 }
 
 .media-thumb {
+  position: relative;
   width: 88px;
   height: 88px;
   overflow: hidden;
   border-radius: 8px;
   background: #0b111b;
+}
+
+.media-thumb-icon {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  color: rgba(248, 250, 252, 0.96);
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+  font-size: 24px;
 }
 
 .media-image {
@@ -992,6 +1069,60 @@ textarea {
   font-weight: 650;
 }
 
+.media-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(2, 6, 12, 0.84);
+  backdrop-filter: blur(8px);
+}
+
+.media-preview-modal {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(1100px, 100%);
+  max-height: min(88vh, 1000px);
+  padding: 52px 18px 18px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: rgba(10, 15, 24, 0.98);
+  box-shadow: var(--shadow);
+}
+
+.media-preview-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.media-preview-close:hover {
+  border-color: rgba(56, 189, 248, 0.34);
+  background: var(--accent-soft);
+}
+
+.media-preview-asset {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: calc(88vh - 70px);
+  border-radius: 8px;
+  object-fit: contain;
+}
+
 @media (max-width: 1080px) {
   .app-shell {
     grid-template-columns: 280px minmax(0, 1fr);
@@ -1114,5 +1245,22 @@ textarea {
   .media-thumb {
     width: 72px;
     height: 72px;
+  }
+
+  .media-preview-backdrop {
+    padding: 0;
+  }
+
+  .media-preview-modal {
+    width: 100%;
+    height: 100dvh;
+    max-height: none;
+    padding: 52px 12px 12px;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .media-preview-asset {
+    max-height: calc(100dvh - 64px);
   }
 }

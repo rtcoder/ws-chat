@@ -3,24 +3,26 @@ const {db} = require('../db');
 const {images} = require('../schema');
 
 const createImages = async (
-  imagePaths,
+  mediaItems,
   author_id,
   afterSaveAll = () => {
   }
 ) => {
-  if (!imagePaths.length) {
+  if (!mediaItems.length) {
     afterSaveAll([]);
     return [];
   }
 
-  await db.insert(images).values(imagePaths.map((imagePath) => ({
+  await db.insert(images).values(mediaItems.map((mediaItem) => ({
     id: randomUUID(),
-    path: imagePath,
+    path: mediaItem.path,
+    type: mediaItem.kind,
+    posterPath: mediaItem.poster || null,
     authorId: author_id,
   })));
 
-  afterSaveAll(imagePaths);
-  return imagePaths;
+  afterSaveAll(mediaItems);
+  return mediaItems;
 };
 
 module.exports = {

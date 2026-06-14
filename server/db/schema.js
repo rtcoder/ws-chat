@@ -1,4 +1,4 @@
-const {boolean, index, pgTable, primaryKey, text, timestamp, uuid} = require('drizzle-orm/pg-core');
+const {boolean, index, jsonb, pgTable, primaryKey, text, timestamp, uuid} = require('drizzle-orm/pg-core');
 const {sql} = require('drizzle-orm');
 
 const timestamps = {
@@ -38,6 +38,7 @@ const chatMembers = pgTable('chat_members', {
 const messages = pgTable('messages', {
   id: uuid('id').primaryKey(),
   text: text('text'),
+  media: jsonb('media').notNull().default(sql`'[]'::jsonb`),
   images: text('images').array().notNull().default(sql`'{}'::text[]`),
   authorId: uuid('author_id').notNull().references(() => users.id, {onDelete: 'cascade'}),
   relatedUserId: uuid('related_user_id').references(() => users.id, {onDelete: 'set null'}),
@@ -65,6 +66,8 @@ const messageReactions = pgTable('message_reactions', {
 const images = pgTable('images', {
   id: uuid('id').primaryKey(),
   path: text('path').notNull(),
+  type: text('type').notNull().default('image'),
+  posterPath: text('poster_path'),
   authorId: uuid('author_id').references(() => users.id, {onDelete: 'set null'}),
   chatId: uuid('chat_id').references(() => chats.id, {onDelete: 'cascade'}),
   ...timestamps,

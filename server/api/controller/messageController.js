@@ -11,51 +11,71 @@ const getMessage = async (req, res, next) => {
   }
 };
 
-const saveBase64ToFile = imagesB64 => {
+const saveBase64ToFile = (mediaPayloads = []) => {
   const fs = require('fs');
-  const processedImages = [];
-  // Save base64 image to disk
-  try {
-    // Decoding base-64 image
-    // Source: http://stackoverflow.com/questions/20267939/nodejs-write-base64-image-file
-    function decodeBase64Image(dataString) {
-      const matches = dataString.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-      const response = {};
+  const path = require('path');
+  const {randomUUID} = require('crypto');
+  const processedFiles = [];
 
-      if (matches.length !== 3) {
-        return new Error('Invalid input string');
+  try {
+    function decodeBase64File(dataString) {
+      if (typeof dataString !== 'string') {
+        throw new Error('Invalid media payload');
       }
 
-      response.type = matches[1];
-      response.data = new Buffer(matches[2], 'base64');
+      const matches = dataString.match(/^data:([A-Za-z0-9.+/-]+\/[A-Za-z0-9.+-]+);base64,(.+)$/);
 
-      return response;
+      if (!matches || matches.length !== 3) {
+        throw new Error('Invalid media input string');
+      }
+
+      return {
+        mimeType: matches[1],
+        data: Buffer.from(matches[2], 'base64'),
+      };
     }
 
-    // Regular expression for image type:
-    // This regular image extracts the "jpeg" from "image/jpeg"
-    const imageTypeRegularExpression = /\/(.*?)$/;
+    const mimeToExtension = (mimeType) => {
+      const extension = mimeType.split('/')[1]?.toLowerCase() || 'bin';
+      const safeExtension = extension.replace(/[^a-z0-9]/g, '');
+      return safeExtension || 'bin';
+    };
 
-    imagesB64.forEach(base64Data => {
-      const imageBuffer = decodeBase64Image(base64Data);
-      const userUploadedFeedMessagesLocation = 'uploads/';
+    mediaPayloads.forEach((mediaPayload) => {
+      const normalizedMedia = typeof mediaPayload === 'string'
+        ? {file: mediaPayload, kind: 'image', poster: null, mimeType: null}
+        : mediaPayload;
+      const fileBuffer = decodeBase64File(normalizedMedia.file);
+      const uploadsDir = 'uploads';
+      const fileExtension = mimeToExtension(fileBuffer.mimeType);
+      const fileKind = normalizedMedia.kind || (fileBuffer.mimeType.startsWith('video/') ? 'video' : 'image');
+      const uniqueFileName = `${fileKind}-${Date.now()}-${randomUUID()}.${fileExtension}`;
+      const uploadedFilePath = path.posix.join(uploadsDir, uniqueFileName);
 
-      // This variable is actually an array which has 5 values,
-      // The [1] value is the real image extension
-      const imageTypeDetected = imageBuffer.type.match(imageTypeRegularExpression);
+      fs.writeFileSync(uploadedFilePath, fileBuffer.data);
 
-      const uniqueRandomImageName = 'image-' + Date.now() + '.' + imageTypeDetected[1];
+      let posterPath = null;
 
-      const userUploadedImagePath = userUploadedFeedMessagesLocation + uniqueRandomImageName;
+      if (fileKind === 'video' && normalizedMedia.poster) {
+        const posterBuffer = decodeBase64File(normalizedMedia.poster);
+        const posterExtension = mimeToExtension(posterBuffer.mimeType);
+        const posterName = `poster-${Date.now()}-${randomUUID()}.${posterExtension}`;
+        posterPath = path.posix.join(uploadsDir, posterName);
+        fs.writeFileSync(posterPath, posterBuffer.data);
+      }
 
-      fs.writeFileSync(userUploadedImagePath, imageBuffer.data);
-      processedImages.push(userUploadedImagePath);
+      processedFiles.push({
+        path: uploadedFilePath,
+        kind: fileKind,
+        poster: posterPath || (fileKind === 'image' ? uploadedFilePath : null),
+        mimeType: fileBuffer.mimeType,
+      });
     });
 
-    return processedImages;
+    return processedFiles;
   } catch (error) {
-    processedImages.forEach(image => {
-      fs.unlink(image, (err) => {
+    processedFiles.forEach((filePath) => {
+      fs.unlink(filePath, (err) => {
         if (err) {
           console.error(err);
         }
@@ -73,10 +93,15 @@ const postMessage = async (req, res, next) => {
     const dataFromClient = decodeMessage(data);
     const msgData = dataFromClient.data;
 
-    const resultImagesPathList = saveBase64ToFile((msgData.images || []));
+    const resultMediaList = saveBase64ToFile(msgData.media || msgData.images || []);
 
-    createImages(resultImagesPathList, req.user.user_id, savedImages => {
-      createMessage({...msgData, images: savedImages, user_id: req.user.user_id}, (message) => {
+    createImages(resultMediaList, req.user.user_id, savedMedia => {
+      createMessage({
+        ...msgData,
+        media: savedMedia,
+        images: savedMedia.map((item) => item.path),
+        user_id: req.user.user_id
+      }, (message) => {
         getMessageWithAuthor(message._id).then((result) => {
           sendMessageWS(result);
         });

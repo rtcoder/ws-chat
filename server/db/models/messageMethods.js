@@ -15,9 +15,23 @@ const MESSAGE_TYPES = {
   INFO_CHANGE_NICKNAME: 'info_change_nickname',
 };
 
+const normalizeMedia = (message) => {
+  if (Array.isArray(message.media) && message.media.length) {
+    return message.media;
+  }
+
+  return (message.images || []).map((path) => ({
+    path,
+    kind: 'image',
+    poster: path,
+    mimeType: null,
+  }));
+};
+
 const toMessage = ({message, author, reactions}) => ({
   _id: message.id,
   text: message.text,
+  media: normalizeMedia(message),
   images: message.images || [],
   author: {
     _id: author.id,
@@ -93,6 +107,7 @@ const createMessage = async (
   await db.insert(messages).values({
     id,
     text: data.text || '',
+    media: data.media || [],
     images: data.images || [],
     authorId: data.user_id,
     relatedUserId: data.relatedUser || null,

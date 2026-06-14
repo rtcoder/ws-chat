@@ -1,9 +1,10 @@
 import {getMessages, postMessage} from '../lib/api';
 import {getLoggedUser} from '../lib/auth';
+import {getMessageMedia} from '../lib/messages';
 import {connectMessagesSocket} from '../lib/websocket';
-import {createElement, icon, image, render} from '../lib/dom';
+import {createElement, icon, image, render, resolveMediaSrc, video} from '../lib/dom';
 import {createStore} from '../lib/store';
-import type {Message} from '../types';
+import type {MediaItem, Message} from '../types';
 import {MessageList} from './MessageList';
 import {MessageComposer} from './MessageComposer';
 
@@ -24,8 +25,10 @@ function formatMessagePreview(message?: Message) {
     return 'No messages yet';
   }
 
-  if (message.images?.length && !message.text) {
-    return `${message.images.length} image${message.images.length > 1 ? 's' : ''}`;
+  const mediaItems = getMessageMedia(message);
+
+  if (mediaItems.length && !message.text) {
+    return `${mediaItems.length} media item${mediaItems.length > 1 ? 's' : ''}`;
   }
 
   return message.text || 'New activity';
@@ -111,9 +114,11 @@ function Sidebar(messages: Message[], authId: string) {
 
 function getMediaEntries(messages: Message[]) {
   return messages
-    .flatMap((message) => message.images.map((src, index) => ({
+    .flatMap((message) => getMessageMedia(message).map((media, index) => ({
       id: `${message._id}-${index}`,
-      src,
+      src: media.path,
+      thumb: media.kind === 'video' ? media.poster || media.path : media.path,
+      kind: media.kind,
       author: message.author.first_name,
       createdAt: message.createdAt,
       caption: message.text,
@@ -168,7 +173,7 @@ function ChatDetails(messages: Message[], authId: string) {
     createElement('div', {className: 'details-card room-card'}, [
       createElement('div', {className: 'room-avatar large', text: 'G'}),
       createElement('h2', {text: 'General room'}),
-      createElement('p', {text: 'A quiet place for websocket chatter, images, and tiny reactions.'})
+      createElement('p', {text: 'A quiet place for websocket chatter, media drops, and tiny reactions.'})
     ]),
     createElement('div', {className: 'details-card'}, [
       createElement('div', {className: 'section-label', text: 'In this room'}),
@@ -232,7 +237,10 @@ function MediaGalleryModal(
       createElement('div', {className: 'media-modal-body'}, mediaEntries.length
         ? mediaEntries.map((entry) => createElement('article', {className: 'media-item', attrs: {'data-id': entry.id}}, [
           createElement('div', {className: 'media-thumb'}, [
-            image(entry.src, 'media-image', `${entry.author} media`)
+            image(entry.thumb, 'media-image', `${entry.author} media`),
+            ...(entry.kind === 'video'
+              ? [createElement('span', {className: 'material-icons media-thumb-icon', text: 'play_circle'})]
+              : [])
           ]),
           createElement('div', {className: 'media-meta'}, [
             createElement('span', {className: 'media-author', text: entry.author}),
@@ -243,9 +251,52 @@ function MediaGalleryModal(
         : [
           createElement('div', {className: 'empty-media'}, [
             icon('image'),
-            createElement('span', {text: 'No images shared yet'})
+            createElement('span', {text: 'No media shared yet'})
           ])
         ])
+    ])
+  ]);
+}
+
+function MediaPreviewModal(
+  media: MediaItem | null,
+  onClose: () => void
+) {
+  if (!media) {
+    return createElement('div');
+  }
+
+  const normalizedSrc = resolveMediaSrc(media.path);
+
+  return createElement('div', {
+    className: 'media-preview-backdrop',
+    on: {
+      click: (event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }
+    }
+  }, [
+    createElement('div', {
+      className: 'media-preview-modal',
+      attrs: {
+        role: 'dialog',
+        'aria-modal': 'true',
+        'aria-label': 'Media preview'
+      }
+    }, [
+      createElement('button', {
+        type: 'button',
+        className: 'media-preview-close',
+        title: 'Close preview',
+        on: {
+          click: () => onClose()
+        }
+      }, [icon('close')]),
+      media.kind === 'video'
+        ? video(normalizedSrc, 'media-preview-asset', true)
+        : image(normalizedSrc, 'media-preview-asset', 'Message attachment preview')
     ])
   ]);
 }
@@ -254,12 +305,14 @@ export function ChatView() {
   const user = getLoggedUser();
   const messages = createStore<Message[]>([]);
   const mediaGalleryOpen = createStore(false);
+  const previewMedia = createStore<MediaItem | null>(null);
 
   const sidebarSlot = createElement('div');
   const headerSlot = createElement('div');
   const messagesSlot = createElement('div', {className: 'messages-pane'});
   const detailsSlot = createElement('div');
   const modalSlot = createElement('div');
+  const previewSlot = createElement('div');
   const container = createElement('div', {className: 'chat-container'}, [
     createElement('div', {className: 'app-shell'}, [
       sidebarSlot,
@@ -274,8 +327,16 @@ export function ChatView() {
       ]),
       detailsSlot
     ]),
-    modalSlot
+    modalSlot,
+    previewSlot
   ]);
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      mediaGalleryOpen.set(false);
+      previewMedia.set(null);
+    }
+  });
 
   messages.subscribe((state) => {
     const authId = user?._id || '';
@@ -283,13 +344,18 @@ export function ChatView() {
     const mediaCount = getMediaEntries(state).length;
     render(sidebarSlot, Sidebar(state, authId));
     render(headerSlot, ChatHeader(state, userName, mediaCount, () => mediaGalleryOpen.set(true)));
-    render(messagesSlot, MessageList(state, user?._id || ''));
+    render(messagesSlot, MessageList(state, user?._id || '', (media) => previewMedia.set(media)));
     render(detailsSlot, ChatDetails(state, authId));
     render(modalSlot, MediaGalleryModal(state, mediaGalleryOpen.get(), () => mediaGalleryOpen.set(false)));
+    render(previewSlot, MediaPreviewModal(previewMedia.get(), () => previewMedia.set(null)));
   });
 
   mediaGalleryOpen.subscribe((open) => {
     render(modalSlot, MediaGalleryModal(messages.get(), open, () => mediaGalleryOpen.set(false)));
+  });
+
+  previewMedia.subscribe((src) => {
+    render(previewSlot, MediaPreviewModal(src, () => previewMedia.set(null)));
   });
 
   getMessages()

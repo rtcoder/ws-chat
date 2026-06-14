@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS chat_members (
 CREATE TABLE IF NOT EXISTS messages (
   id UUID PRIMARY KEY,
   text TEXT,
+  media JSONB NOT NULL DEFAULT '[]'::jsonb,
   images TEXT[] NOT NULL DEFAULT '{}',
   author_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   related_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -54,6 +55,8 @@ CREATE TABLE IF NOT EXISTS message_reactions (
 CREATE TABLE IF NOT EXISTS images (
   id UUID PRIMARY KEY,
   path TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'image',
+  poster_path TEXT,
   author_id UUID REFERENCES users(id) ON DELETE SET NULL,
   chat_id UUID REFERENCES chats(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

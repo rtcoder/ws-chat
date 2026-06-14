@@ -1,10 +1,24 @@
-import {belongsToUser, mapMessagesToGroups} from '../lib/messages';
-import {createElement, icon, image} from '../lib/dom';
-import type {Message} from '../types';
+import {belongsToUser, getMessageMedia, mapMessagesToGroups} from '../lib/messages';
+import {createElement, icon, image, video} from '../lib/dom';
+import type {MediaItem, Message} from '../types';
 
-function MessageBubble(message: Message, canDelete: boolean) {
+function renderMediaThumb(media: MediaItem) {
+  return media.kind === 'video'
+    ? createElement('div', {className: 'media-tile media-video'}, [
+      media.poster ? image(media.poster, 'message-video-thumb') : video(media.path, 'message-video-thumb'),
+      createElement('span', {className: 'material-icons media-play-icon', text: 'play_circle'})
+    ])
+    : createElement('div', {className: 'media-tile'}, [image(media.path)]);
+}
+
+function MessageBubble(
+  message: Message,
+  canDelete: boolean,
+  onPreviewMedia: (media: MediaItem) => void
+) {
+  const mediaItems = getMessageMedia(message);
   let imagesDivClassName = 'images';
-  const imagesLength = message.images.length;
+  const imagesLength = mediaItems.length;
 
   if (imagesLength) {
     const classes: Record<string, string> = {
@@ -21,9 +35,16 @@ function MessageBubble(message: Message, canDelete: boolean) {
   });
   const content = createElement('div', {className: 'content-message'}, [text]);
 
-  if (message.images.length) {
-    content.append(createElement('div', {className: imagesDivClassName}, message.images.map((file) => (
-      createElement('div', {className: 'image-handler'}, [image(file)])
+  if (mediaItems.length) {
+    content.append(createElement('div', {className: imagesDivClassName}, mediaItems.map((media) => (
+      createElement('button', {
+        className: 'image-handler',
+        type: 'button',
+        title: 'Preview media',
+        on: {
+          click: () => onPreviewMedia(media)
+        }
+      }, [renderMediaThumb(media)])
     ))));
   }
 
@@ -35,7 +56,11 @@ function MessageBubble(message: Message, canDelete: boolean) {
   return createElement('div', {className: 'message', attrs: {'data-id': message._id}}, [content, options]);
 }
 
-export function MessageList(messages: Message[], authId: string) {
+export function MessageList(
+  messages: Message[],
+  authId: string,
+  onPreviewMedia: (media: MediaItem) => void
+) {
   const container = createElement('div', {className: 'messages'});
   const groups = mapMessagesToGroups(messages);
 
@@ -51,7 +76,7 @@ export function MessageList(messages: Message[], authId: string) {
       createElement('div', {className: 'user-group-content'}, [
         createElement('div', {className: 'user-name', text: group.author.first_name}),
         createElement('div', {className: 'group'}, group.messages.map((message) => (
-          MessageBubble(message, messageBelongsToLoggedUser)
+          MessageBubble(message, messageBelongsToLoggedUser, onPreviewMedia)
         )))
       ]),
       createElement('div', {className: 'user-icon'}, [userIcon])

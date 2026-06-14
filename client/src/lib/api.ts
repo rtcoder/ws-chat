@@ -1,7 +1,7 @@
 import {getAuthToken, setAuthToken, setLoggedUser} from './auth';
 import {API_URL} from './config';
 import {encodeJson} from './encoding';
-import type {ApiResult, Message, User} from '../types';
+import type {ApiResult, MediaUpload, Message, User} from '../types';
 
 async function fetchApi<T>(input: RequestInfo | URL, init: RequestInit = {}): Promise<ApiResult<T>> {
   const headers = new Headers(init.headers);
@@ -31,7 +31,7 @@ export function getMessages() {
   });
 }
 
-export function postMessage(value: {text: string; images: string[]; type: string}) {
+export function postMessage(value: {text: string; media: MediaUpload[]; type: string}) {
   return fetchApi<void>(`${API_URL}/api/messages`, {
     method: 'POST',
     body: JSON.stringify({
