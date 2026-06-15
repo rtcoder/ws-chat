@@ -4,6 +4,7 @@ const {createMessage, deleteMessage, getLatestMessages, getMessageWithAuthor, se
 const {sendMessageWS, decodeMessage} = require("../../ws/wsMethods");
 const {createImages} = require("../../db/models/imageMethods");
 const {getChatByIdForUser, getChatUserIds, getGeneralChatForUser} = require('../../db/models/chatMethods');
+const {getUploadsDir, resolveStoredUploadPath, toStoredUploadPath} = require('../../utils/paths');
 
 const getMessage = async (req, res, next) => {
   try {
@@ -66,7 +67,6 @@ const saveBase64ToFile = (mediaPayloads = []) => {
         ? {file: mediaPayload, kind: 'image', name: null, poster: null, mimeType: null}
         : mediaPayload;
       const fileBuffer = decodeBase64File(normalizedMedia.file);
-      const uploadsDir = 'uploads';
       const fileExtension = mimeToExtension(fileBuffer.mimeType);
       const fileKind = normalizedMedia.kind || (
         fileBuffer.mimeType.startsWith('video/')
@@ -74,9 +74,10 @@ const saveBase64ToFile = (mediaPayloads = []) => {
           : (fileBuffer.mimeType.startsWith('audio/') ? 'audio' : 'image')
       );
       const uniqueFileName = `${fileKind}-${Date.now()}-${randomUUID()}.${fileExtension}`;
-      const uploadedFilePath = path.posix.join(uploadsDir, uniqueFileName);
+      const uploadedFilePath = toStoredUploadPath(uniqueFileName);
 
-      fs.writeFileSync(uploadedFilePath, fileBuffer.data);
+      fs.mkdirSync(getUploadsDir(), {recursive: true});
+      fs.writeFileSync(resolveStoredUploadPath(uploadedFilePath), fileBuffer.data);
 
       let posterPath = null;
 
@@ -84,8 +85,8 @@ const saveBase64ToFile = (mediaPayloads = []) => {
         const posterBuffer = decodeBase64File(normalizedMedia.poster);
         const posterExtension = mimeToExtension(posterBuffer.mimeType);
         const posterName = `poster-${Date.now()}-${randomUUID()}.${posterExtension}`;
-        posterPath = path.posix.join(uploadsDir, posterName);
-        fs.writeFileSync(posterPath, posterBuffer.data);
+        posterPath = toStoredUploadPath(posterName);
+        fs.writeFileSync(resolveStoredUploadPath(posterPath), posterBuffer.data);
       }
 
       processedFiles.push({
@@ -102,14 +103,14 @@ const saveBase64ToFile = (mediaPayloads = []) => {
     return processedFiles;
   } catch (error) {
     processedFiles.forEach((fileItem) => {
-      fs.unlink(fileItem.path, (err) => {
+      fs.unlink(resolveStoredUploadPath(fileItem.path), (err) => {
         if (err) {
           console.error(err);
         }
       });
 
       if (fileItem.poster && fileItem.poster !== fileItem.path) {
-        fs.unlink(fileItem.poster, (err) => {
+        fs.unlink(resolveStoredUploadPath(fileItem.poster), (err) => {
           if (err) {
             console.error(err);
           }
@@ -157,7 +158,7 @@ const deleteStoredFiles = async (mediaItems = []) => {
   );
 
   await Promise.all([...filePaths].map(async (storedPath) => {
-    const absolutePath = path.join(__dirname, '../../', storedPath);
+    const absolutePath = resolveStoredUploadPath(storedPath);
 
     try {
       await fs.unlink(absolutePath);

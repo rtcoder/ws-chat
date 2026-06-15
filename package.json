@@ -8,7 +8,8 @@
     "service:build": "cd client && npm run build",
     "service:install": "scripts/install-launchd.sh",
     "service:status": "scripts/status-launchd.sh",
-    "service:uninstall": "scripts/uninstall-launchd.sh"
+    "service:uninstall": "scripts/uninstall-launchd.sh",
+    "binary:build": "scripts/build-binary.sh"
   },
   "author": "",
   "license": "ISC"
